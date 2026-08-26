@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة إدارة المفاتيح | 3105 License Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --accent: #2ea043;
+            --accent-hover: #3fb950;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --danger: #f85149;
+            --warning: #d29922;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 26px; color: #58a6ff; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 14px; }
+        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--danger); padding: 6px 12px; font-size: 12px; }
+        .btn-warning { background: var(--warning); color: #000; padding: 6px 12px; font-size: 12px; margin-left: 5px; }
+        .btn-copy { background: #21262d; border: 1px solid var(--border); padding: 4px 8px; font-size: 12px; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
+        th { background: #21262d; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-active { background: #238636; color: #fff; }
+        .badge-unused { background: #388bfd33; color: #58a6ff; }
+        .badge-expired { background: #f8514933; color: #f85149; }
+        .key-text { font-family: monospace; font-size: 14px; color: #7ee787; font-weight: bold; }
+        .hwid-text { font-family: monospace; font-size: 11px; color: #8b949e; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🔐 لوحة إدارة تراخيص 3105</h1>
+        <p style="color: #8b949e; font-size: 13px;">توليد وإدارة المفاتيح وربط الـ HWID ضد الكراك والتسريب</p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="card" id="loginCard">
+        <h3>تسجيل الدخول إلى اللوحة</h3>
+        <div class="input-group" style="margin-top: 12px;">
+            <label>كلمة مرور المسؤول (Admin Password):</label>
+            <input type="password" id="adminPassword" placeholder="أدخل كلمة المرور (الافتراضية: admin123456)">
+        </div>
+        <button onclick="login()">دخول</button>
+    </div>
+
+    <!-- Main Dashboard (Hidden by default) -->
+    <div id="mainDashboard" style="display: none;">
+        
+        <!-- Generate Keys Card -->
+        <div class="card">
+            <h3>➕ إنشاء مفاتيح جديدة (Generate Keys)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 12px;">
+                <div class="input-group">
+                    <label>المدة (Duration):</label>
+                    <select id="keyDuration">
+                        <option value="1">1 يوم (Day)</option>
+                        <option value="7">7 أيام (Week)</option>
+                        <option value="30" selected>30 يوم (Month)</option>
+                        <option value="90">90 يوم (3 Months)</option>
+                        <option value="365">سنة (1 Year)</option>
+                        <option value="0">مدى الحياة (Lifetime)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>العدد:</label>
+                    <input type="number" id="keyCount" value="1" min="1" max="50">
+                </div>
+                <div class="input-group">
+                    <label>ملاحظة (اسم المشتري):</label>
+                    <input type="text" id="keyNote" placeholder="مثال: Ahmed VIP">
+                </div>
+            </div>
+            <button onclick="generateKeys()">توليد المفتاح الآن</button>
+        </div>
+
+        <!-- Keys List Card -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>📋 قائمة المفاتيح الحالية</h3>
+                <button onclick="loadKeys()" style="padding: 6px 12px; font-size: 13px; background: #21262d; border: 1px solid var(--border);">تحديث القائمة</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المفتاح (License Key)</th>
+                            <th>المدة</th>
+                            <th>الحالة</th>
+                            <th>الجهاز المربوط (HWID)</th>
+                            <th>تاريخ الانتهاء</th>
+                            <th>ملاحظة</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTableBody">
+                        <tr><td colspan="7" style="text-align: center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let token = "";
+
+    function login() {
+        token = document.getElementById('adminPassword').value.trim();
+        if (!token) return alert('يرجى كتابة كلمة المرور');
+        
+        loadKeys(() => {
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('mainDashboard').style.display = 'block';
+        });
+    }
+
+    function loadKeys(callback) {
+        fetch('/api/admin/keys', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r => {
+            if (r.status === 401) throw new Error('كلمة المرور غير صحيحة');
+            return r.json();
+        })
+        .then(data => {
+            renderKeys(data.keys || []);
+            if (callback) callback();
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    }
+
+    function renderKeys(keys) {
+        const tbody = document.getElementById('keysTableBody');
+        if (keys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">لا توجد مفاتيح حالياً.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = keys.map(k => {
+            let statusBadge = '<span class="badge badge-unused">غير مفعل</span>';
+            if (k.hwid) {
+                if (k.expiresAt && k.expiresAt !== 'LIFETIME' && new Date() > new Date(k.expiresAt)) {
+                    statusBadge = '<span class="badge badge-expired">منتهي الصلاحية</span>';
+                } else {
+                    statusBadge = '<span class="badge badge-active">مفعل وشغال</span>';
+                }
+            }
+
+            const expDate = k.expiresAt ? (k.expiresAt === 'LIFETIME' ? 'مدى الحياة' : new Date(k.expiresAt).toLocaleDateString('ar-EG')) : '-';
+            const durationLabel = k.durationDays === 0 ? 'مدى الحياة' : `${k.durationDays} يوم`;
+
+            return `
+                <tr>
+                    <td>
+                        <span class="key-text">${k.key}</span>
+                        <button class="btn-copy" onclick="copyText('${k.key}')">نسخ</button>
+                    </td>
+                    <td>${durationLabel}</td>
+                    <td>${statusBadge}</td>
+                    <td class="hwid-text" title="${k.hwid || 'لم يُربط بعد'}">${k.hwid ? k.hwid.slice(0, 10) + '...' : '-'}</td>
+                    <td>${expDate}</td>
+                    <td>${k.note || '-'}</td>
+                    <td>
+                        ${k.hwid ? `<button class="btn-warning" onclick="resetHwid('${k.key}')">فك الجهاز</button>` : ''}
+                        <button class="btn-danger" onclick="deleteKey('${k.key}')">حذف</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function generateKeys() {
+        const durationDays = document.getElementById('keyDuration').value;
+        const count = document.getElementById('keyCount').value;
+        const note = document.getElementById('keyNote').value;
+
+        fetch('/api/admin/keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ durationDays, count, note })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`تم إنشاء ${data.count} مفتاح بنجاح!`);
+                document.getElementById('keyNote').value = '';
+                loadKeys();
+            }
+        });
+    }
+
+    function resetHwid(key) {
+        if (!confirm(`هل تريد فك ربط الجهاز عن المفتاح ${key} حتى يمكن استخدامه على جهاز آخر؟`)) return;
+        fetch(`/api/admin/keys/${key}/reset-hwid`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r => r.json())
+        .then(() => loadKeys());
+    }
+
+    function deleteKey(key) {
+        if (!confirm(`هل أنت متأكد من حذف المفتاح ${key} نهائياً؟`)) return;
+        fetch(`/api/admin/keys/${key}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r => r.json())
+        .then(() => loadKeys());
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text);
+        alert(`تم نسخ المفتاح: ${text}`);
+    }
+</script>
+
+</body>
+</html>

@@ -6,6 +6,7 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
+    @StateObject private var licenseService = LicenseService.shared
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @State private var showOnboarding = OnboardingStore.shouldShow()
     @State private var showAttribution = false
@@ -32,28 +33,34 @@ struct ThreeOneOSFiveApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView()
-                    .environmentObject(appState)
-                    .environmentObject(patchDraftCoordinator)
-                    .environmentObject(fileOperationCoordinator)
-                    .environment(\.appLanguage, language)
-                    .environment(\.locale, language.locale)
-                    .opacity(showOnboarding ? 0 : 1)
-                    .allowsHitTesting(!showOnboarding)
+                if licenseService.isActivated {
+                    ContentView()
+                        .environmentObject(appState)
+                        .environmentObject(patchDraftCoordinator)
+                        .environmentObject(fileOperationCoordinator)
+                        .environment(\.appLanguage, language)
+                        .environment(\.locale, language.locale)
+                        .opacity(showOnboarding ? 0 : 1)
+                        .allowsHitTesting(!showOnboarding)
 
-                if showOnboarding {
-                    OnboardingView {
-                        OnboardingStore.markCompleted()
-                        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                            showOnboarding = false
+                    if showOnboarding {
+                        OnboardingView {
+                            OnboardingStore.markCompleted()
+                            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                                showOnboarding = false
+                            }
+                            appState.detectSupport()
+                            checkForUpdate()
                         }
-                        appState.detectSupport()
-                        checkForUpdate()
+                        .environment(\.appLanguage, language)
+                        .environment(\.locale, language.locale)
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                        .zIndex(1)
                     }
-                    .environment(\.appLanguage, language)
-                    .environment(\.locale, language.locale)
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                    .zIndex(1)
+                } else {
+                    LicenseActivationView()
+                        .environment(\.appLanguage, language)
+                        .environment(\.locale, language.locale)
                 }
             }
             .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding)

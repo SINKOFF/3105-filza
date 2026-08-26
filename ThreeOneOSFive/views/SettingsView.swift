@@ -23,6 +23,14 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
 
+                Section("معلومات الترخيص (License)") {
+                    LabeledContent("حالة المفتاح", value: LicenseService.shared.isActivated ? "مفعل ومحمي ✅" : "غير مفعل ❌")
+                    if !LicenseService.shared.activeKey.isEmpty {
+                        LabeledContent("المفتاح", value: LicenseService.shared.activeKey)
+                        LabeledContent("الصلاحية", value: LicenseService.shared.expiryString)
+                    }
+                }
+
                 Section(language.text("settings.language")) {
                     Picker(language.text("settings.language"), selection: $languageCode) {
                         ForEach(AppLanguage.allCases) { option in

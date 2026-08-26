@@ -1,0 +1,10 @@
+{
+  "name": "3105-license-server",
+  "version": "1.0.0",
+  "description": "Secure License Key & HWID Management Server",
+  "main": "api/index.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}

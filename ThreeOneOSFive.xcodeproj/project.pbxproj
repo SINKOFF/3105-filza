@@ -69,6 +69,8 @@
 		3105A228 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3105A120; };
 		3105A211 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3105A031; };
 		3105PL01 /* PreloadedAssetsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105PL02; };
+		3105LIC1 /* LicenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105LIC2; };
+		3105LIC3 /* LicenseActivationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105LIC4; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -152,6 +154,8 @@
 		3105A122 /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3105B123 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		3105PL02 /* PreloadedAssetsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreloadedAssetsService.swift; sourceTree = "<group>"; };
+		3105LIC2 /* LicenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseService.swift; sourceTree = "<group>"; };
+		3105LIC4 /* LicenseActivationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseActivationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -227,6 +231,7 @@
 				3105E101 /* CleanerView.swift */,
 				3105F106 /* WallpaperLabView.swift */,
 				3105F108 /* OnboardingView.swift */,
+				3105LIC4 /* LicenseActivationView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -241,6 +246,7 @@
 				3105A110 /* FileReplacementService.swift */,
 				3105A111 /* FileManagerService.swift */,
 				3105PL02 /* PreloadedAssetsService.swift */,
+				3105LIC2 /* LicenseService.swift */,
 				3105G100 /* ZIPArchiveWriter.swift */,
 				3105G102 /* ZIPArchiveExtractor.swift */,
 				3105G101 /* FileOperationCoordinator.swift */,
@@ -365,6 +371,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				3105PL01,
+				3105LIC1,
+				3105LIC3,
 				3105A200, 3105A201, 3105A203, 3105A204,
 				3105A205, 3105A206, 3105A207, 3105A209,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
