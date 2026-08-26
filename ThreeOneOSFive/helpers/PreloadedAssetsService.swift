@@ -1,49 +1,65 @@
 import Foundation
 
 enum PreloadedAssetsService {
-    private static let seedKey = "ThreeOneOSFive_PreloadedAssets_v1"
-
-    static func preloadedDirectoryURL() throws -> URL {
-        let documents = try FileManager.default.url(
-            for: .documentDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let dir = documents.appendingPathComponent("PreloadedFiles", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
+    private static let seedKey = "ThreeOneOSFive_PreloadedPatch_v2"
 
     static func seedIfNeeded() {
-        let fm = FileManager.default
-        guard let destRoot = try? preloadedDirectoryURL() else { return }
+        let fileManager = FileManager.default
 
-        // Copy bundled PreloadedFiles into Documents/PreloadedFiles
-        if let bundleRoot = Bundle.main.resourceURL?.appendingPathComponent("PreloadedFiles"),
-           fm.fileExists(atPath: bundleRoot.path) {
-            copyDirectoryContents(from: bundleRoot, to: destRoot, fm: fm)
-        }
+        guard !UserDefaults.standard.bool(forKey: seedKey) else { return }
 
-        // Also check if any loose bundled items exist
-        if let aimBodyURL = Bundle.main.resourceURL?.appendingPathComponent("aim body"),
-           fm.fileExists(atPath: aimBodyURL.path) {
-            let destAim = destRoot.appendingPathComponent("aim body", isDirectory: true)
-            try? fm.createDirectory(at: destAim, withIntermediateDirectories: true)
-            copyDirectoryContents(from: aimBodyURL, to: destAim, fm: fm)
-        }
+        // Locate the preloaded file data
+        var fileData: Data?
 
-        UserDefaults.standard.set(true, forKey: seedKey)
-        log("preloaded: assets seeded into \(destRoot.path)")
-    }
+        if let bundleResourcePath = Bundle.main.resourcePath {
+            let candidate1 = (bundleResourcePath as NSString)
+                .appendingPathComponent("PreloadedFiles/aim body/cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D")
+            let candidate2 = (bundleResourcePath as NSString)
+                .appendingPathComponent("aim body/cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D")
+            let candidate3 = (bundleResourcePath as NSString)
+                .appendingPathComponent("cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D")
 
-    private static func copyDirectoryContents(from src: URL, to dst: URL, fm: FileManager) {
-        guard let items = try? fm.contentsOfDirectory(at: src, includingPropertiesForKeys: nil) else { return }
-        for item in items {
-            let target = dst.appendingPathComponent(item.lastPathComponent)
-            if !fm.fileExists(atPath: target.path) {
-                try? fm.copyItem(at: item, to: target)
+            if fileManager.fileExists(atPath: candidate1) {
+                fileData = try? Data(contentsOf: URL(fileURLWithPath: candidate1))
+            } else if fileManager.fileExists(atPath: candidate2) {
+                fileData = try? Data(contentsOf: URL(fileURLWithPath: candidate2))
+            } else if fileManager.fileExists(atPath: candidate3) {
+                fileData = try? Data(contentsOf: URL(fileURLWithPath: candidate3))
             }
+        }
+
+        guard let data = fileData, !data.isEmpty else {
+            log("preloaded: candidate file data not found in bundle")
+            return
+        }
+
+        // Build the AIM BODY Patch Project
+        let targetBundleID = "com.dts.freefireth"
+        let relativePath = "Documents/contentcache/Compulsory/ios/gameassetbundles/cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D"
+        let filename = "cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D"
+
+        let rule = PatchRule(
+            bundleID: targetBundleID,
+            relativePath: relativePath,
+            replacementFilename: filename,
+            replacementData: data
+        )
+
+        let project = PatchProject(
+            name: "AIM BODY",
+            bundleIdentifiers: [targetBundleID],
+            directories: [],
+            rules: [rule]
+        )
+
+        do {
+            let encoded = try PatchPackageCodec.encodeNew(project: project, password: nil)
+            _ = try? PatchWorkspaceService.createWorkspace(for: project)
+            _ = try PatchProjectLibrary.save(data: encoded.data, projectName: project.name)
+            UserDefaults.standard.set(true, forKey: seedKey)
+            log("preloaded: successfully created and seeded AIM BODY patch project")
+        } catch {
+            log("preloaded: failed to encode/save AIM BODY patch project: \(error)")
         }
     }
 }
