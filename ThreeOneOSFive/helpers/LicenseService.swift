@@ -17,13 +17,16 @@ final class LicenseService: ObservableObject {
     @Published var isChecking: Bool = false
     @Published var activeKey: String = ""
     @Published var expiryString: String = ""
+    @Published var expiryDate: Date? = nil
     @Published var errorMessage: String?
 
     private var sessionID: String?
-    private let keyStorageKey = "ThreeOneOSFive_SavedKeyAuthKey"
+    // Key stored in Keychain so it survives reinstalls
+    private let keychainKeyTag = "com.threeoneosfive.saved.licensekey"
 
     init() {
-        if let savedKey = UserDefaults.standard.string(forKey: keyStorageKey), !savedKey.isEmpty {
+        // Load persisted key from Keychain (survives reinstalls)
+        if let savedKey = loadKeychain(key: keychainKeyTag), !savedKey.isEmpty {
             self.activeKey = savedKey
             Task {
                 await verify(key: savedKey, silent: true)
@@ -88,7 +91,7 @@ final class LicenseService: ObservableObject {
     func verify(key: String, silent: Bool = false) async -> Bool {
         let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanKey.isEmpty else {
-            if !silent { self.errorMessage = "يرجى إدخال مفتاح الترخيص" }
+            if !silent { self.errorMessage = "Please enter your license key." }
             return false
         }
 
@@ -112,7 +115,7 @@ final class LicenseService: ObservableObject {
             ]
 
             guard let url = components.url else {
-                if !silent { isChecking = false; errorMessage = "خطأ في تكوين الرابط" }
+                if !silent { isChecking = false; errorMessage = "Invalid API URL configuration." }
                 return false
             }
 
@@ -122,12 +125,12 @@ final class LicenseService: ObservableObject {
 
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                if !silent { isChecking = false; errorMessage = "فشل الاتصال بـ KeyAuth" }
+                if !silent { isChecking = false; errorMessage = "Could not connect to KeyAuth server." }
                 return false
             }
 
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                if !silent { isChecking = false; errorMessage = "رد غير صالح من KeyAuth" }
+                if !silent { isChecking = false; errorMessage = "Invalid response from server." }
                 return false
             }
 
@@ -146,24 +149,27 @@ final class LicenseService: ObservableObject {
                    let expTimestamp = Double(expTimestampStr) {
                     let expDate = Date(timeIntervalSince1970: expTimestamp)
                     let formatter = DateFormatter()
+                    formatter.locale = Locale(identifier: "en_US_POSIX")
                     formatter.dateStyle = .medium
                     formatter.timeStyle = .none
                     self.expiryString = formatter.string(from: expDate)
+                    self.expiryDate = expDate
                 } else {
-                    self.expiryString = "مفعل (Active)"
+                    self.expiryString = "Active"
+                    self.expiryDate = nil
                 }
 
-                UserDefaults.standard.set(cleanKey, forKey: keyStorageKey)
+                // Persist key in Keychain (survives app reinstall)
+                saveKeychain(key: keychainKeyTag, value: cleanKey)
                 if !silent { isChecking = false }
                 return true
             } else {
-                // If session expired, invalidate it for next try
                 if message.lowercased().contains("session") {
                     self.sessionID = nil
                 }
-                
                 self.isActivated = false
-                UserDefaults.standard.removeObject(forKey: keyStorageKey)
+                // Remove invalid key from Keychain
+                deleteKeychain(key: keychainKeyTag)
                 if !silent {
                     isChecking = false
                     self.errorMessage = translateKeyAuthMessage(message)
@@ -174,7 +180,7 @@ final class LicenseService: ObservableObject {
             self.sessionID = nil
             if !silent {
                 isChecking = false
-                errorMessage = "خطأ في الاتصال: \(error.localizedDescription)"
+                errorMessage = "Connection error: \(error.localizedDescription)"
             }
             return false
         }
@@ -183,35 +189,37 @@ final class LicenseService: ObservableObject {
     private func translateKeyAuthMessage(_ msg: String) -> String {
         let lower = msg.lowercased()
         if lower.contains("invalid") || lower.contains("not found") {
-            return "المفتاح غير موجود أو خاطئ"
+            return "Key not found or invalid."
         } else if lower.contains("hwid") || lower.contains("device") {
-            return "هذا المفتاح مستخدم على جهاز آخر (HWID Mismatch)"
+            return "This key is locked to another device (HWID Mismatch)."
         } else if lower.contains("expired") {
-            return "انتهت صلاحية هذا المفتاح"
+            return "This key has expired."
         } else if lower.contains("paused") || lower.contains("banned") {
-            return "المفتاح محظور أو موقوف"
+            return "This key is paused or banned."
         }
         return msg
     }
 
-    // Keychain Helpers
+    // ── Keychain Helpers ───────────────────────────────────────────────────
     private func saveKeychain(key: String, value: String) {
         guard let data = value.data(using: .utf8) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data
+        // Use kSecAttrAccessibleAfterFirstUnlock so it survives reinstalls
+        let attrs: [String: Any] = [
+            kSecClass as String:                 kSecClassGenericPassword,
+            kSecAttrAccount as String:           key,
+            kSecAttrAccessible as String:        kSecAttrAccessibleAfterFirstUnlock,
+            kSecValueData as String:             data
         ]
-        SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        SecItemDelete(attrs as CFDictionary)
+        SecItemAdd(attrs as CFDictionary, nil)
     }
 
     private func loadKeychain(key: String) -> String? {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
+            kSecClass as String:       kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecReturnData as String: kCFBooleanTrue!,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecReturnData as String:  kCFBooleanTrue!,
+            kSecMatchLimit as String:  kSecMatchLimitOne
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -219,5 +227,13 @@ final class LicenseService: ObservableObject {
             return String(data: data, encoding: .utf8)
         }
         return nil
+    }
+
+    private func deleteKeychain(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 }
