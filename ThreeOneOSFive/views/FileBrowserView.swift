@@ -418,9 +418,6 @@ struct FileBrowserView: View {
         } label: {
             Label(language.text("browser.move"), systemImage: "folder")
         }
-        ShareLink(item: URL(fileURLWithPath: entry.path)) {
-            Label(language.text("browser.share"), systemImage: "square.and.arrow.up")
-        }
         Divider()
         if bundleID != nil {
             Button {
@@ -1647,15 +1644,6 @@ struct FileQuickLookView: View {
         }
         .navigationTitle(file.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if let previewURL {
-                    ShareLink(item: previewURL) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                }
-            }
-        }
         .task(id: file.id) {
             let sourceURL = URL(fileURLWithPath: file.path)
             let result = await Task.detached(priority: .userInitiated) {

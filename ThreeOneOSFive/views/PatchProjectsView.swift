@@ -329,20 +329,10 @@ private struct PatchProjectDetailView: View {
                 } else {
                     Section {
                         ForEach(project.rules) { rule in
-                            Button {
-                                editingRule = rule
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ruleSummary(rule)
-                                    Spacer(minLength: 8)
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .contentShape(Rectangle())
+                            HStack(spacing: 10) {
+                                ruleSummary(rule)
+                                Spacer(minLength: 8)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityHint(language.text("patch.edit_rule_hint"))
                         }
                     } header: {
                         Text(language.text("patch.rules"))
@@ -379,11 +369,6 @@ private struct PatchProjectDetailView: View {
                         }
                         .disabled(isWorking)
                     }
-
-                    Button(action: prepareExport) {
-                        actionLabel("patch.export", systemImage: "square.and.arrow.up")
-                    }
-                    .disabled(isWorking)
                 } footer: {
                     Text(language.text("patch.apply_footer"))
                 }
@@ -396,9 +381,6 @@ private struct PatchProjectDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isWorking {
                     ProgressView()
-                } else if !isWorkspaceProject {
-                    Button(language.text("patch.edit")) { showEditor = true }
-                        .disabled(item?.project == nil)
                 }
             }
         }
