@@ -69,7 +69,6 @@
 		3105A228 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3105A120; };
 		3105A211 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3105A031; };
 		3105PL01 /* PreloadedAssetsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105PL02; };
-		3105PL03 /* PreloadedFiles in Resources */ = {isa = PBXBuildFile; fileRef = 3105PL04; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -153,7 +152,6 @@
 		3105A122 /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3105B123 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		3105PL02 /* PreloadedAssetsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreloadedAssetsService.swift; sourceTree = "<group>"; };
-		3105PL04 /* PreloadedFiles */ = {isa = PBXFileReference; lastKnownFileType = folder; path = PreloadedFiles; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -188,7 +186,6 @@
 				3105A406 /* kexploit */,
 				3105A120 /* Localizable.strings */,
 				3105A031 /* Assets.xcassets */,
-				3105PL04 /* PreloadedFiles */,
 			);
 			path = ThreeOneOSFive;
 			sourceTree = "<group>";
@@ -357,7 +354,6 @@
 			files = (
 				3105A211,
 				3105A228,
-				3105PL03,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
