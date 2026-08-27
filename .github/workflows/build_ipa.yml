@@ -44,20 +44,22 @@ jobs:
       - name: Package IPA
         run: |
           mkdir -p output/Payload
-          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "3105.app" -type d | head -n 1)
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            echo "Error: 3105.app not found!"
+            echo "Error: app bundle not found!"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" output/Payload/
           cd output
-          zip -r -9 3105-unsigned.ipa Payload
+          zip -r -9 SINKO-unsigned.ipa Payload
+          cp SINKO-unsigned.ipa 3105-unsigned.ipa
           cd ..
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 3105-unsigned-ipa
-          path: output/3105-unsigned.ipa
+          name: SINKO-unsigned-ipa
+          path: output/*.ipa
           retention-days: 14
+
