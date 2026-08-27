@@ -150,7 +150,7 @@ private struct ExpiryCountdownRow: View {
     let expiryDate: Date
     @State private var now: Date = Date()
 
-    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         LabeledContent("Time Left", value: countdown)
@@ -160,12 +160,14 @@ private struct ExpiryCountdownRow: View {
     private var countdown: String {
         let diff = expiryDate.timeIntervalSince(now)
         if diff <= 0 { return "Expired" }
-        let totalMinutes = Int(diff / 60)
-        let days    = totalMinutes / 1440
-        let hours   = (totalMinutes % 1440) / 60
-        let minutes = totalMinutes % 60
-        if days > 0 { return "\(days)d \(hours)h \(minutes)m" }
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        return "\(minutes)m"
+        let totalSeconds = Int(diff)
+        let days    = totalSeconds / 86400
+        let hours   = (totalSeconds % 86400) / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if days > 0 { return "\(days)d \(hours)h \(minutes)m \(seconds)s" }
+        if hours > 0 { return "\(hours)h \(minutes)m \(seconds)s" }
+        if minutes > 0 { return "\(minutes)m \(seconds)s" }
+        return "\(seconds)s"
     }
 }

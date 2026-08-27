@@ -41,3 +41,5 @@ DerivedData/
 *.tmp
 *.swp
 *~
+license-server/node_modules/
+

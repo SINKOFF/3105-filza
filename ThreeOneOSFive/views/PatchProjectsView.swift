@@ -189,7 +189,110 @@ struct PatchProjectsView: View {
                             .foregroundColor(.gray.opacity(0.8))
                             .padding(.horizontal, 24)
 
-                        espRow(label: "Green", color: .green, isOn: $espGreen)
+                        let is3DSelected = (activePatchName == "3D gen read")
+
+                        Button {
+                            toggleAimbot("3D gen read")
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(is3DSelected ? Color.green : Color.gray.opacity(0.5), lineWidth: 1.5)
+                                        .frame(width: 22, height: 22)
+
+                                    if is3DSelected {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.green)
+                                            .frame(width: 14, height: 14)
+                                    }
+                                }
+
+                                Text("3D gen read")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(is3DSelected ? .white : .gray.opacity(0.9))
+
+                                Spacer()
+
+                                if isApplying && is3DSelected {
+                                    ProgressView()
+                                        .tint(.green)
+                                        .scaleEffect(0.8)
+                                } else if is3DSelected {
+                                    Text("ON")
+                                        .font(.system(size: 11, weight: .heavy))
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.green.opacity(0.15))
+                                        .cornerRadius(6)
+                                }
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white.opacity(is3DSelected ? 0.09 : 0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(is3DSelected ? Color.green.opacity(0.6) : Color.white.opacity(0.06), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
+
+                        let is144FPSSelected = (activePatchName == "144 FPS")
+
+                        Button {
+                            toggleAimbot("144 FPS")
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(is144FPSSelected ? Color.green : Color.gray.opacity(0.5), lineWidth: 1.5)
+                                        .frame(width: 22, height: 22)
+
+                                    if is144FPSSelected {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.green)
+                                            .frame(width: 14, height: 14)
+                                    }
+                                }
+
+                                Text("144 FPS")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(is144FPSSelected ? .white : .gray.opacity(0.9))
+
+                                Spacer()
+
+                                if isApplying && is144FPSSelected {
+                                    ProgressView()
+                                        .tint(.green)
+                                        .scaleEffect(0.8)
+                                } else if is144FPSSelected {
+                                    Text("ON")
+                                        .font(.system(size: 11, weight: .heavy))
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.green.opacity(0.15))
+                                        .cornerRadius(6)
+                                }
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white.opacity(is144FPSSelected ? 0.09 : 0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(is144FPSSelected ? Color.green.opacity(0.6) : Color.white.opacity(0.06), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
+
                         espRow(label: "Cyan",  color: .cyan,  isOn: $espCyan)
                     }
 

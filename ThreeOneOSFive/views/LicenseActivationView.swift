@@ -3,12 +3,6 @@ import SwiftUI
 struct LicenseActivationView: View {
     @ObservedObject var licenseService = LicenseService.shared
     @State private var inputKey: String = ""
-    @State private var copiedHWID: Bool = false
-
-    // iOS version
-    private var iosVersion: String {
-        UIDevice.current.systemVersion
-    }
 
     var body: some View {
         ZStack {
@@ -24,7 +18,7 @@ struct LicenseActivationView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 28) {
-                    Spacer(minLength: 30)
+                    Spacer(minLength: 40)
 
                     // ── Branding ───────────────────────────────────────────
                     VStack(spacing: 14) {
@@ -48,8 +42,8 @@ struct LicenseActivationView: View {
                         }
 
                         VStack(spacing: 6) {
-                            Text("3105 · SINKO")
-                                .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            Text("SINKO")
+                                .font(.system(size: 26, weight: .heavy, design: .rounded))
                                 .foregroundColor(.white)
 
                             Text("Enter your license key to unlock the app")
@@ -60,76 +54,8 @@ struct LicenseActivationView: View {
                         }
                     }
 
-                    // ── iOS Version Badge ──────────────────────────────────
-                    HStack(spacing: 6) {
-                        Image(systemName: "iphone")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.cyan.opacity(0.7))
-                        Text("iOS \(iosVersion)")
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.cyan.opacity(0.7))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.cyan.opacity(0.08))
-                    .cornerRadius(20)
-
-                    // ── Device HWID Card ────────────────────────────────────
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            HStack(spacing: 6) {
-                                Image(systemName: "cpu")
-                                    .foregroundColor(.cyan)
-                                    .font(.system(size: 12, weight: .semibold))
-                                Text("Device HWID")
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(.gray)
-                            }
-                            Spacer()
-                            Button {
-                                UIPasteboard.general.string = licenseService.deviceHWID
-                                copiedHWID = true
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                    copiedHWID = false
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: copiedHWID ? "checkmark" : "doc.on.doc")
-                                        .font(.system(size: 10, weight: .bold))
-                                    Text(copiedHWID ? "Copied!" : "Copy")
-                                        .font(.system(size: 11, weight: .bold))
-                                }
-                                .foregroundColor(copiedHWID ? .green : .cyan)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(
-                                    (copiedHWID ? Color.green : Color.cyan).opacity(0.12)
-                                )
-                                .cornerRadius(8)
-                            }
-                        }
-
-                        Text(licenseService.deviceHWID)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.65))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.white.opacity(0.04))
-                            .cornerRadius(8)
-                    }
-                    .padding(16)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                    )
-                    .padding(.horizontal, 20)
-
                     // ── Key Input + Activate ────────────────────────────────
-                    VStack(spacing: 14) {
+                    VStack(spacing: 16) {
                         // Text Field
                         HStack(spacing: 0) {
                             TextField("VIP-XXXX-XXXX-XXXX", text: $inputKey)
@@ -142,7 +68,7 @@ struct LicenseActivationView: View {
                             // Paste button
                             if let clip = UIPasteboard.general.string, !clip.isEmpty, inputKey.isEmpty {
                                 Button("Paste") {
-                                    inputKey = clip
+                                    inputKey = clip.trimmingCharacters(in: .whitespacesAndNewlines)
                                 }
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.cyan)
@@ -220,10 +146,10 @@ struct LicenseActivationView: View {
 
                     // ── Footer ─────────────────────────────────────────────
                     VStack(spacing: 4) {
-                        Text("3105 · Security Engine")
+                        Text("SINKO · Security Engine")
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .foregroundColor(.gray.opacity(0.45))
-                        Text("Cryptographic Verification · HWID Lock")
+                        Text("Device Protection · License Lock")
                             .font(.system(size: 10))
                             .foregroundColor(.gray.opacity(0.3))
                     }

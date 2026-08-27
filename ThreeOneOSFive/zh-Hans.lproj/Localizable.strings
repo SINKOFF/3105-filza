@@ -30,9 +30,9 @@
 "onboarding.language_title" = "选择语言";
 "onboarding.language_subtitle" = "之后可在设置中更改。";
 "onboarding.language_hint" = "选择一种语言以继续。";
-"onboarding.welcome_title" = "欢迎使用 3105";
-"onboarding.welcome_message" = "由 YangJiii 开发";
-"onboarding.welcome_badge" = "官方 3105 标识";
+"onboarding.welcome_title" = "欢迎使用 SINKO";
+"onboarding.welcome_message" = "由 SINKO 开发";
+"onboarding.welcome_badge" = "官方 SINKO 标识";
 "onboarding.versions_title" = "支持的 iOS 版本";
 "onboarding.versions_subtitle" = "3105 已在下列范围内验证。不支持的版本会被阻止。";
 "onboarding.versions_footer" = "本设备：iOS %@（%@）";

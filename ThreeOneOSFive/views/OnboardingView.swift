@@ -93,7 +93,7 @@ struct OnboardingView: View {
                     .padding(.horizontal, 24)
             }
             VStack(spacing: 10) {
-                ForEach(AppLanguage.allCases) { option in
+                ForEach([AppLanguage.english]) { option in
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
                             languageCode = option.rawValue
@@ -104,20 +104,14 @@ struct OnboardingView: View {
                                 Text(option.displayName)
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(.primary)
-                                Text(option.rawValue == "en" ? "English" : option.rawValue == "vi" ? "Tiếng Việt" : "简体中文")
+                                Text("English")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if languageCode == option.rawValue {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(AppTheme.accent)
-                                    .font(.title3)
-                                    .transition(.scale.combined(with: .opacity))
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundStyle(.secondary.opacity(0.5))
-                            }
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(AppTheme.accent)
+                                .font(.title3)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
@@ -126,7 +120,7 @@ struct OnboardingView: View {
                                 .fill(Color(uiColor: .secondarySystemBackground))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .stroke(languageCode == option.rawValue ? AppTheme.accent : Color.clear, lineWidth: 1)
+                                        .stroke(AppTheme.accent, lineWidth: 1)
                                 )
                         )
                     }
@@ -141,18 +135,26 @@ struct OnboardingView: View {
     private var welcomePage: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 10)
-             ZStack {
-                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                     .fill(Color(uiColor: .secondarySystemBackground))
-                     .overlay(
-                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                             .stroke(AppTheme.accent.opacity(0.3), lineWidth: 1)
-                     )
-                     .frame(width: 72, height: 72)
-                 Image(systemName: "sparkles")
-                     .font(.system(size: 30, weight: .medium))
-                     .foregroundStyle(AppTheme.accent)
-             }
+            // SINKO photo
+            ZStack {
+                Circle()
+                    .fill(Color(uiColor: .secondarySystemBackground))
+                    .frame(width: 90, height: 90)
+                    .overlay(
+                        Circle()
+                            .stroke(AppTheme.accent.opacity(0.5), lineWidth: 2)
+                    )
+                Image("SINKOPhoto")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 84, height: 84)
+                    .clipShape(Circle())
+            }
+            // SINKO name
+            Text("SINKO")
+                .font(.title.weight(.heavy))
+                .foregroundStyle(AppTheme.accent)
+                .tracking(3)
             VStack(spacing: 10) {
                 Text(language.text("onboarding.welcome_title"))
                     .font(.title2.weight(.bold))

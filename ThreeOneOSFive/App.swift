@@ -86,8 +86,15 @@ struct ThreeOneOSFiveApp: App {
                 }
             }
             .onChange(of: scenePhase) { phase in
-                guard phase == .active, !showOnboarding else { return }
-                appState.detectSupport()
+                guard phase == .active else { return }
+                if !showOnboarding {
+                    appState.detectSupport()
+                }
+                if !licenseService.activeKey.isEmpty {
+                    Task {
+                        _ = await licenseService.verify(key: licenseService.activeKey, silent: true)
+                    }
+                }
             }
             .onOpenURL { url in
                 patchDraftCoordinator.presentImport(url)

@@ -21,23 +21,28 @@ final class LicenseService: ObservableObject {
     @Published var errorMessage: String?
 
     private var sessionID: String?
-    // Key stored in Keychain so it survives reinstalls
+    // Key and Expiry stored in Keychain so they survive reinstalls and backgrounding
     private let keychainKeyTag = "com.threeoneosfive.saved.licensekey"
+    private let keychainExpiryTag = "com.threeoneosfive.saved.licenseexpiry"
 
     init() {
-        // Load persisted key from Keychain (survives reinstalls)
-        if let savedKey = loadKeychain(key: keychainKeyTag), !savedKey.isEmpty {
+        // Cold start: ALWAYS start unactivated until live server handshake succeeds
+        self.isActivated = false
+        
+        let savedKey = loadKeychain(key: keychainKeyTag) ?? ""
+        if !savedKey.isEmpty {
             self.activeKey = savedKey
+            self.isChecking = true
             Task {
-                await verify(key: savedKey, silent: true)
+                _ = await verify(key: savedKey, silent: false)
             }
         }
     }
 
-    // Persistent Device HWID
+    // Persistent Device HWID (unique per device, survives reinstalls via Keychain)
     var deviceHWID: String {
         let tag = "com.threeoneosfive.keyauth.hwid"
-        if let existing = loadKeychain(key: tag) {
+        if let existing = loadKeychain(key: tag), !existing.isEmpty {
             return existing
         }
         let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
@@ -87,11 +92,17 @@ final class LicenseService: ObservableObject {
         return sid
     }
 
-    // Verify License Key
+    // Verify License Key with live server check
     func verify(key: String, silent: Bool = false) async -> Bool {
         let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanKey.isEmpty else {
-            if !silent { self.errorMessage = "Please enter your license key." }
+            self.isActivated = false
+            deleteKeychain(key: keychainKeyTag)
+            deleteKeychain(key: keychainExpiryTag)
+            if !silent {
+                self.isChecking = false
+                self.errorMessage = "Please enter your license key."
+            }
             return false
         }
 
@@ -116,6 +127,7 @@ final class LicenseService: ObservableObject {
 
             guard let url = components.url else {
                 if !silent { isChecking = false; errorMessage = "Invalid API URL configuration." }
+                self.isActivated = false
                 return false
             }
 
@@ -126,11 +138,13 @@ final class LicenseService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 if !silent { isChecking = false; errorMessage = "Could not connect to KeyAuth server." }
+                self.isActivated = false
                 return false
             }
 
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 if !silent { isChecking = false; errorMessage = "Invalid response from server." }
+                self.isActivated = false
                 return false
             }
 
@@ -138,38 +152,71 @@ final class LicenseService: ObservableObject {
             let message = json["message"] as? String ?? "Unknown error"
 
             if success {
-                self.isActivated = true
                 self.activeKey = cleanKey
                 
-                // Parse expiry info if available
+                // Parse expiry timestamp accurately
+                var expTimestamp: Double? = nil
                 if let info = json["info"] as? [String: Any],
                    let subs = info["subscriptions"] as? [[String: Any]],
                    let firstSub = subs.first,
-                   let expTimestampStr = firstSub["expiry"] as? String,
-                   let expTimestamp = Double(expTimestampStr) {
-                    let expDate = Date(timeIntervalSince1970: expTimestamp)
-                    let formatter = DateFormatter()
-                    formatter.locale = Locale(identifier: "en_US_POSIX")
-                    formatter.dateStyle = .medium
-                    formatter.timeStyle = .none
-                    self.expiryString = formatter.string(from: expDate)
-                    self.expiryDate = expDate
-                } else {
-                    self.expiryString = "Active"
-                    self.expiryDate = nil
+                   let expStr = firstSub["expiry"] as? String,
+                   let parsed = Double(expStr), parsed > 0 {
+                    expTimestamp = parsed
                 }
 
-                // Persist key in Keychain (survives app reinstall)
-                saveKeychain(key: keychainKeyTag, value: cleanKey)
-                if !silent { isChecking = false }
-                return true
+                // If not provided by subscription, check persistent token or default 24h
+                if expTimestamp == nil || expTimestamp == 0 {
+                    if let savedExp = loadKeychain(key: keychainExpiryTag), let ts = Double(savedExp), ts > Date().timeIntervalSince1970 {
+                        expTimestamp = ts
+                    } else {
+                        expTimestamp = Date().addingTimeInterval(86400).timeIntervalSince1970
+                    }
+                }
+
+                if let expTs = expTimestamp {
+                    let expDate = Date(timeIntervalSince1970: expTs)
+                    if expDate > Date() {
+                        self.isActivated = true
+                        self.expiryDate = expDate
+                        self.expiryString = formatExpiryDate(expDate)
+                        saveKeychain(key: keychainKeyTag, value: cleanKey)
+                        saveKeychain(key: keychainExpiryTag, value: String(expTs))
+                        self.errorMessage = nil
+                        if !silent { isChecking = false }
+                        return true
+                    } else {
+                        // Key expired on server
+                        self.isActivated = false
+                        self.activeKey = ""
+                        self.expiryDate = expDate
+                        self.expiryString = "Expired"
+                        deleteKeychain(key: keychainKeyTag)
+                        deleteKeychain(key: keychainExpiryTag)
+                        if !silent {
+                            isChecking = false
+                            self.errorMessage = "This key has expired."
+                        }
+                        return false
+                    }
+                } else {
+                    self.isActivated = true
+                    self.expiryString = "Lifetime"
+                    self.expiryDate = nil
+                    saveKeychain(key: keychainKeyTag, value: cleanKey)
+                    if !silent { isChecking = false }
+                    return true
+                }
             } else {
+                // Key is invalid, banned, paused, HWID mismatch, or deleted in KeyAuth dashboard
                 if message.lowercased().contains("session") {
                     self.sessionID = nil
                 }
                 self.isActivated = false
-                // Remove invalid key from Keychain
+                self.activeKey = ""
+                self.expiryDate = nil
+                self.expiryString = ""
                 deleteKeychain(key: keychainKeyTag)
+                deleteKeychain(key: keychainExpiryTag)
                 if !silent {
                     isChecking = false
                     self.errorMessage = translateKeyAuthMessage(message)
@@ -178,12 +225,21 @@ final class LicenseService: ObservableObject {
             }
         } catch {
             self.sessionID = nil
+            self.isActivated = false
             if !silent {
                 isChecking = false
                 errorMessage = "Connection error: \(error.localizedDescription)"
             }
             return false
         }
+    }
+
+    private func formatExpiryDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     private func translateKeyAuthMessage(_ msg: String) -> String {
@@ -195,7 +251,7 @@ final class LicenseService: ObservableObject {
         } else if lower.contains("expired") {
             return "This key has expired."
         } else if lower.contains("paused") || lower.contains("banned") {
-            return "This key is paused or banned."
+            return "This key is paused or banned in KeyAuth."
         }
         return msg
     }
@@ -203,7 +259,6 @@ final class LicenseService: ObservableObject {
     // ── Keychain Helpers ───────────────────────────────────────────────────
     private func saveKeychain(key: String, value: String) {
         guard let data = value.data(using: .utf8) else { return }
-        // Use kSecAttrAccessibleAfterFirstUnlock so it survives reinstalls
         let attrs: [String: Any] = [
             kSecClass as String:                 kSecClassGenericPassword,
             kSecAttrAccount as String:           key,
