@@ -242,6 +242,17 @@ final class LicenseService: ObservableObject {
         return formatter.string(from: date)
     }
 
+    func deleteKey() {
+        self.isActivated = false
+        self.activeKey = ""
+        self.expiryDate = nil
+        self.expiryString = ""
+        self.errorMessage = nil
+        self.sessionID = nil
+        deleteKeychain(key: keychainKeyTag)
+        deleteKeychain(key: keychainExpiryTag)
+    }
+
     private func translateKeyAuthMessage(_ msg: String) -> String {
         let lower = msg.lowercased()
         if lower.contains("invalid") || lower.contains("not found") {

@@ -71,11 +71,13 @@
 		3105PL01 /* PreloadedAssetsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105PL02; };
 		3105LIC1 /* LicenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105LIC2; };
 		3105LIC3 /* LicenseActivationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105LIC4; };
+		3105BG01 /* bg.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3105BG00; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3105A010 /* 3105.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "3105.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		3105BG00 /* bg.mp4 */ = {isa = PBXFileReference; lastKnownFileType = video.mp4; path = bg.mp4; sourceTree = "<group>"; };
 		3105A021 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3105A023 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3105A024 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
@@ -190,6 +192,7 @@
 				3105A406 /* kexploit */,
 				3105A120 /* Localizable.strings */,
 				3105A031 /* Assets.xcassets */,
+				3105BG00 /* bg.mp4 */,
 			);
 			path = ThreeOneOSFive;
 			sourceTree = "<group>";
@@ -360,6 +363,7 @@
 			files = (
 				3105A211,
 				3105A228,
+				3105BG01,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

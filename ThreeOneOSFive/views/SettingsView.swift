@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
 
+    @State private var showDeleteKeyAlert: Bool = false
+
     var body: some View {
         NavigationStack {
             Form {
@@ -37,6 +39,20 @@ struct SettingsView: View {
                         // ── Expiry countdown ────────────────────────────────
                         if let expDate = LicenseService.shared.expiryDate {
                             ExpiryCountdownRow(expiryDate: expDate)
+                        }
+
+                        // ── Delete Key Action ───────────────────────────────
+                        Button(role: .destructive) {
+                            showDeleteKeyAlert = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                    .foregroundColor(.red)
+                                Text("حذف المفتاح (Delete Key)")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.red)
+                                Spacer()
+                            }
                         }
                     }
                 }
@@ -91,6 +107,16 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
                 }
+            }
+            .alert("حذف المفتاح / Delete Key", isPresented: $showDeleteKeyAlert) {
+                Button("حذف وتسجيل الخروج", role: .destructive) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    LicenseService.shared.deleteKey()
+                    dismiss()
+                }
+                Button("إلغاء", role: .cancel) { }
+            } message: {
+                Text("هل أنت متأكد من رغبتك في حذف المفتاح وتسجيل الخروج؟ سيتعين عليك إدخال المفتاح مجدداً.")
             }
         }
     }
