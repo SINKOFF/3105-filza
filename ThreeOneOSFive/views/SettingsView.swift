@@ -48,7 +48,7 @@ struct SettingsView: View {
                             HStack {
                                 Image(systemName: "trash.fill")
                                     .foregroundColor(.red)
-                                Text("حذف المفتاح (Delete Key)")
+                                Text("Delete Key")
                                     .fontWeight(.semibold)
                                     .foregroundColor(.red)
                                 Spacer()
@@ -108,15 +108,15 @@ struct SettingsView: View {
                         .fontWeight(.semibold)
                 }
             }
-            .alert("حذف المفتاح / Delete Key", isPresented: $showDeleteKeyAlert) {
-                Button("حذف وتسجيل الخروج", role: .destructive) {
+            .alert("Delete License Key", isPresented: $showDeleteKeyAlert) {
+                Button("Delete & Log Out", role: .destructive) {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     LicenseService.shared.deleteKey()
                     dismiss()
                 }
-                Button("إلغاء", role: .cancel) { }
+                Button("Cancel", role: .cancel) { }
             } message: {
-                Text("هل أنت متأكد من رغبتك في حذف المفتاح وتسجيل الخروج؟ سيتعين عليك إدخال المفتاح مجدداً.")
+                Text("Are you sure you want to delete your active license key and log out? You will need to enter your key again.")
             }
         }
     }

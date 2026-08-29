@@ -29,12 +29,12 @@ struct PatchProjectsView: View {
     }
 
     // Aimbot items configuration
-    private let aimbotList: [(id: String, title: String, patchProjectName: String, assetName: String)] = [
-        ("drag",    "AIM DRAG",      "AIM DRAG",      "preview_aim_drag"),
-        ("neck",    "AIM NECK",      "AIM NECK",      "preview_aim_neck"),
-        ("body100", "AIM BODY 100%", "AIM BODY 100%", "preview_aim_body100"),
-        ("body80",  "AIM BODY 80%",  "AIM BODY 80%",  "preview_aim_body80"),
-        ("magic",   "AIM MGIC",      "AIM MGIC",      "preview_aim_magic")
+    private let aimbotList: [(id: String, title: String, patchProjectName: String, assetName: String, isRisk: Bool)] = [
+        ("drag",    "AIM DRAG",      "AIM DRAG",      "preview_aim_drag",    false),
+        ("neck",    "AIM NECK",      "AIM NECK",      "preview_aim_neck",    false),
+        ("body100", "AIM BODY 100%", "AIM BODY 100%", "preview_aim_body100", true),
+        ("body80",  "AIM BODY 80%",  "AIM BODY 80%",  "preview_aim_body80",  false),
+        ("magic",   "AIM MGIC",      "AIM MGIC",      "preview_aim_magic",   false)
     ]
 
     // ESP / 3D items configuration
@@ -252,6 +252,7 @@ struct PatchProjectsView: View {
                                 isApplying: isCurrentlyApplying,
                                 tintColor: purpleAccent,
                                 assetName: aim.assetName,
+                                isRisk: aim.isRisk,
                                 onToggle: {
                                     togglePatch(name: aim.patchProjectName, category: .aimbot)
                                 },
@@ -293,6 +294,7 @@ struct PatchProjectsView: View {
                                 isApplying: isCurrentlyApplying,
                                 tintColor: esp.color,
                                 assetName: esp.assetName,
+                                isRisk: false,
                                 onToggle: {
                                     togglePatch(name: esp.patchProjectName, category: .esp3d)
                                 },
@@ -312,6 +314,7 @@ struct PatchProjectsView: View {
                             isApplying: is144Applying,
                             tintColor: Color.cyan,
                             assetName: nil,
+                            isRisk: false,
                             onToggle: {
                                 togglePatch(name: "144 FPS", category: .fps)
                             },
@@ -319,28 +322,49 @@ struct PatchProjectsView: View {
                         )
                     }
 
-                    // ── Account Safety Card ─────────────────────────────────
-                    HStack(spacing: 12) {
-                        Image(systemName: "shield.checkered")
-                            .font(.system(size: 22))
-                            .foregroundColor(purpleAccent)
+                    // ── Account Safety & Instructions Card ───────────────────
+                    VStack(alignment: .leading, spacing: 14) {
+                        // Safety tip
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "shield.lefthalf.filled")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.orange)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("ANTI-BAN & PRO TIPS")
-                                .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                                .foregroundColor(.white)
-                            Text("يمكنك تشغيل خاصية من خانة Aimbot وخاصية من خانة ESP 3D في نفس الوقت بأمان.")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("ACCOUNT SAFETY TIP")
+                                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                                    .foregroundColor(.orange)
+                                Text("If you want to play on your main account, use Aim Drag — it has the lowest detection risk.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.gray.opacity(0.9))
+                            }
                         }
-                        Spacer()
+
+                        Divider()
+                            .background(Color.white.opacity(0.08))
+
+                        // How to use
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(purpleAccent)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("HOW TO USE")
+                                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                                    .foregroundColor(purpleGlow)
+                                Text("1. Open the game first and wait until you reach the Login / Lobby screen.\n2. Open SINKO and activate your desired features.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.gray.opacity(0.9))
+                            }
+                        }
                     }
-                    .padding(14)
-                    .background(Color.purple.opacity(0.08))
-                    .cornerRadius(14)
+                    .padding(16)
+                    .background(Color(red: 0.10, green: 0.07, blue: 0.16).opacity(0.85))
+                    .cornerRadius(16)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(purpleAccent.opacity(0.2), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(purpleAccent.opacity(0.25), lineWidth: 1)
                     )
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
@@ -363,8 +387,8 @@ struct PatchProjectsView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("تم التفعيل بنجاح")
-                                .font(.system(size: 13, weight: .heavy))
+                            Text("ACTIVATED")
+                                .font(.system(size: 13, weight: .heavy, design: .monospaced))
                                 .foregroundColor(.white)
                             Text(message)
                                 .font(.system(size: 11, weight: .medium))
@@ -457,7 +481,7 @@ struct PatchProjectsView: View {
                                 .stroke(purpleAccent.opacity(0.4), lineWidth: 1)
                         )
 
-                        Text("انقر في أي مكان أو على زر الإغلاق لإخفاء الصورة")
+                        Text("Tap anywhere or close button to dismiss")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.gray.opacity(0.8))
                     }
@@ -520,6 +544,7 @@ struct PatchProjectsView: View {
         isApplying: Bool,
         tintColor: Color,
         assetName: String?,
+        isRisk: Bool,
         onToggle: @escaping () -> Void,
         onEyeTap: (() -> Void)?
     ) -> some View {
@@ -543,9 +568,22 @@ struct PatchProjectsView: View {
                         }
                     }
 
-                    Text(title)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(isSelected ? .white : .gray.opacity(0.9))
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .gray.opacity(0.9))
+
+                        if isRisk {
+                            Text("RISK")
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .cornerRadius(4)
+                                .shadow(color: Color.red.opacity(0.5), radius: 3)
+                        }
+                    }
 
                     Spacer()
 
@@ -685,7 +723,7 @@ struct PatchProjectsView: View {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
 
                     // Trigger elegant Toast HUD
-                    self.toastMessage = "\(targetPatchName) جاهز الآن في اللعبة"
+                    self.toastMessage = "\(targetPatchName) Ready in Game"
                     withAnimation(.spring()) {
                         self.showToast = true
                     }
