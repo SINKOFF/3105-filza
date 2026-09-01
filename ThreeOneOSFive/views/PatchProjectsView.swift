@@ -11,11 +11,16 @@ struct PatchProjectsView: View {
     @State private var active3DName: String? = nil
     @State private var is144FPSActive: Bool = false
 
-    // Applying state per patch
+    // Active transaction receipts for clean restoration of original files
+    @State private var activeReceipts: [String: PatchTransactionReceipt] = [:]
+
+    // Applying / Restoring state per patch
     @State private var applyingPatchName: String? = nil
+    @State private var isRestoringAll: Bool = false
 
     // Activation notification toast & message
     @State private var toastMessage: String? = nil
+    @State private var toastIsRestore: Bool = false
     @State private var showToast: Bool = false
     @State private var alertMessage: String? = nil
     @State private var showAlert: Bool = false
@@ -26,6 +31,13 @@ struct PatchProjectsView: View {
     enum GameVersion: String, CaseIterable {
         case normal = "Free Fire"
         case max = "FF Max"
+
+        var bundleID: String {
+            switch self {
+            case .normal: return "com.dts.freefireth"
+            case .max:    return "com.dts.freefiremax"
+            }
+        }
     }
 
     // Aimbot items configuration
@@ -205,6 +217,45 @@ struct PatchProjectsView: View {
                                 color: Color.cyan
                             )
                         }
+
+                        // Restore Originals Action Bar (Appears when any feature is active)
+                        if hasAnyActive {
+                            Button {
+                                restoreAllPatches()
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if isRestoringAll {
+                                        ProgressView()
+                                            .tint(.orange)
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "arrow.counterclockwise.circle.fill")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(.orange)
+                                    }
+
+                                    Text("RESTORE ALL ORIGINAL FILES")
+                                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                                        .foregroundColor(.orange)
+
+                                    Spacer()
+
+                                    Text("Clean Revert")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(.orange.opacity(0.8))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 9)
+                                .background(Color.orange.opacity(0.12))
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.orange.opacity(0.4), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isRestoringAll || applyingPatchName != nil)
+                        }
                     }
                     .padding(18)
                     .background(
@@ -373,21 +424,21 @@ struct PatchProjectsView: View {
                 }
             }
 
-            // ── Floating Activation Toast HUD ───────────────────────────────
+            // ── Floating Activation / Restore Toast HUD ─────────────────────
             if showToast, let message = toastMessage {
                 VStack {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(Color.green.opacity(0.2))
+                                .fill(toastIsRestore ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
                                 .frame(width: 32, height: 32)
-                            Image(systemName: "checkmark.circle.fill")
+                            Image(systemName: toastIsRestore ? "arrow.counterclockwise.circle.fill" : "checkmark.circle.fill")
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.green)
+                                .foregroundColor(toastIsRestore ? .orange : .green)
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("ACTIVATED")
+                            Text(toastIsRestore ? "RESTORED ORIGINALS" : "ACTIVATED")
                                 .font(.system(size: 13, weight: .heavy, design: .monospaced))
                                 .foregroundColor(.white)
                             Text(message)
@@ -397,9 +448,9 @@ struct PatchProjectsView: View {
 
                         Spacer()
 
-                        Image(systemName: "sparkles")
+                        Image(systemName: toastIsRestore ? "shield.fill" : "sparkles")
                             .font(.system(size: 14))
-                            .foregroundColor(purpleAccent)
+                            .foregroundColor(toastIsRestore ? .orange : purpleAccent)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -409,9 +460,9 @@ struct PatchProjectsView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(purpleAccent.opacity(0.6), lineWidth: 1.5)
+                            .stroke(toastIsRestore ? Color.orange.opacity(0.6) : purpleAccent.opacity(0.6), lineWidth: 1.5)
                     )
-                    .shadow(color: purpleAccent.opacity(0.35), radius: 16, y: 6)
+                    .shadow(color: (toastIsRestore ? Color.orange : purpleAccent).opacity(0.35), radius: 16, y: 6)
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -657,7 +708,7 @@ struct PatchProjectsView: View {
         .padding(.horizontal, 20)
     }
 
-    // ── Patch Toggle Logic with Sound & Haptics ─────────────────────────────
+    // ── Patch Toggle, Apply & Restore Engine ──────────────────────────────
     enum PatchCategory {
         case aimbot
         case esp3d
@@ -665,40 +716,46 @@ struct PatchProjectsView: View {
     }
 
     private func togglePatch(name: String, category: PatchCategory) {
-        // Haptic feedback & activation chime
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        AudioServicesPlaySystemSound(1057) // Keypad/shutter click
+        AudioServicesPlaySystemSound(1057)
 
         switch category {
         case .aimbot:
             if activeAimbotName == name {
-                // Deactivate if tapped again
-                activeAimbotName = nil
+                // Tapped active patch -> Restore Originals & Deactivate
+                restoreSinglePatch(name: name, category: .aimbot)
                 return
             }
+            // If another aimbot was active, restore it first before applying new one
+            if let previous = activeAimbotName {
+                restoreSinglePatch(name: previous, category: .aimbot, autoDeactivateOnly: true)
+            }
             activeAimbotName = name
-            applySinglePatch(targetPatchName: name)
+            applySinglePatch(targetPatchName: name, category: .aimbot)
 
         case .esp3d:
             if active3DName == name {
-                // Deactivate if tapped again
-                active3DName = nil
+                // Tapped active patch -> Restore Originals & Deactivate
+                restoreSinglePatch(name: name, category: .esp3d)
                 return
             }
+            if let previous = active3DName {
+                restoreSinglePatch(name: previous, category: .esp3d, autoDeactivateOnly: true)
+            }
             active3DName = name
-            applySinglePatch(targetPatchName: name)
+            applySinglePatch(targetPatchName: name, category: .esp3d)
 
         case .fps:
             if is144FPSActive {
-                is144FPSActive = false
+                restoreSinglePatch(name: "144 FPS", category: .fps)
                 return
             }
             is144FPSActive = true
-            applySinglePatch(targetPatchName: "144 FPS")
+            applySinglePatch(targetPatchName: "144 FPS", category: .fps)
         }
     }
 
-    private func applySinglePatch(targetPatchName: String) {
+    private func applySinglePatch(targetPatchName: String, category: PatchCategory) {
         guard let item = store.items.first(where: { $0.project?.name == targetPatchName }),
               let baseProject = item.project else {
             alertMessage = "Patch \(targetPatchName) not found in library."
@@ -707,41 +764,146 @@ struct PatchProjectsView: View {
         }
 
         applyingPatchName = targetPatchName
+        let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
             do {
-                let project = item.summary.schemaVersion >= 2
+                let synced = item.summary.schemaVersion >= 2
                     ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
                     : baseProject
-                _ = try DevicePatchService.apply(project: project)
+
+                // Retarget project to selected game bundle
+                let project = retargetProject(synced, to: targetBundle)
+                let receipt = try DevicePatchService.apply(project: project)
 
                 await MainActor.run {
                     self.applyingPatchName = nil
+                    self.activeReceipts[targetPatchName] = receipt
 
-                    // Play success sound & haptic notification
-                    AudioServicesPlayAlertSound(1054) // Payment/action success chime
+                    // Success notification
+                    AudioServicesPlayAlertSound(1054)
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-                    // Trigger elegant Toast HUD
-                    self.toastMessage = "\(targetPatchName) Ready in Game"
-                    withAnimation(.spring()) {
-                        self.showToast = true
-                    }
-
-                    // Auto dismiss toast after 2.5s
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            self.showToast = false
-                        }
-                    }
+                    self.showToastMessage("\(targetPatchName) Applied Successfully", isRestore: false)
                 }
             } catch {
                 await MainActor.run {
                     self.applyingPatchName = nil
-                    self.alertMessage = "Failed to apply: \(error.localizedDescription)"
+                    // Revert active status on failure
+                    switch category {
+                    case .aimbot: if self.activeAimbotName == targetPatchName { self.activeAimbotName = nil }
+                    case .esp3d:  if self.active3DName == targetPatchName { self.active3DName = nil }
+                    case .fps:    if targetPatchName == "144 FPS" { self.is144FPSActive = false }
+                    }
+                    self.alertMessage = "Failed to apply patch: \(error.localizedDescription)"
                     self.showAlert = true
                 }
             }
         }
+    }
+
+    private func restoreSinglePatch(name: String, category: PatchCategory, autoDeactivateOnly: Bool = false) {
+        applyingPatchName = name
+
+        Task.detached(priority: .userInitiated) {
+            // Find active receipt or lookup latest receipt in library
+            let item = await MainActor.run { store.items.first(where: { $0.project?.name == name }) }
+            var receiptToRestore = await MainActor.run { activeReceipts[name] }
+
+            if receiptToRestore == nil, let item, let project = item.project {
+                receiptToRestore = DevicePatchService.latestReceipt(projectID: project.id)
+            }
+
+            if let receipt = receiptToRestore {
+                do {
+                    try DevicePatchService.restore(receipt: receipt)
+                } catch {
+                    log("restore error for \(name): \(error)")
+                }
+            }
+
+            await MainActor.run {
+                self.applyingPatchName = nil
+                self.activeReceipts.removeValue(forKey: name)
+
+                switch category {
+                case .aimbot:
+                    if self.activeAimbotName == name { self.activeAimbotName = nil }
+                case .esp3d:
+                    if self.active3DName == name { self.active3DName = nil }
+                case .fps:
+                    if name == "144 FPS" { self.is144FPSActive = false }
+                }
+
+                if !autoDeactivateOnly {
+                    AudioServicesPlaySystemSound(1057)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    self.showToastMessage("Restored Originals for \(name)", isRestore: true)
+                }
+            }
+        }
+    }
+
+    private func restoreAllPatches() {
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        isRestoringAll = true
+
+        Task.detached(priority: .userInitiated) {
+            let receipts = await MainActor.run { Array(activeReceipts.values) }
+
+            // Restore all cached receipts
+            for receipt in receipts {
+                try? DevicePatchService.restore(receipt: receipt)
+            }
+
+            // Also check latest receipts for any store items that were active
+            let allItems = await MainActor.run { store.items }
+            for item in allItems {
+                if let project = item.project, let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
+                    try? DevicePatchService.restore(receipt: receipt)
+                }
+            }
+
+            await MainActor.run {
+                self.activeReceipts.removeAll()
+                self.activeAimbotName = nil
+                self.active3DName = nil
+                self.is144FPSActive = false
+                self.isRestoringAll = false
+
+                AudioServicesPlayAlertSound(1054)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                self.showToastMessage("All Game Files Restored to Original", isRestore: true)
+            }
+        }
+    }
+
+    private func showToastMessage(_ msg: String, isRestore: Bool) {
+        self.toastMessage = msg
+        self.toastIsRestore = isRestore
+        withAnimation(.spring()) {
+            self.showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.showToast = false
+            }
+        }
+    }
+
+    private static func retargetProject(_ project: PatchProject, to bundleID: String) -> PatchProject {
+        var modified = project
+        modified.bundleIdentifiers = [bundleID]
+        modified.rules = project.rules.map { rule in
+            var r = rule
+            r.bundleID = bundleID
+            return r
+        }
+        modified.directories = project.directories.map { dir in
+            var d = dir
+            d.bundleID = bundleID
+            return d
+        }
+        return modified
     }
 }
