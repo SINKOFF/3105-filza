@@ -893,7 +893,7 @@ struct PatchProjectsView: View {
         }
     }
 
-    private static func retargetProject(_ project: PatchProject, to bundleID: String) -> PatchProject {
+    private nonisolated static func retargetProject(_ project: PatchProject, to bundleID: String) -> PatchProject {
         var modified = project
         modified.bundleIdentifiers = [bundleID]
         modified.rules = project.rules.map { rule in
