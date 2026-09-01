@@ -28,6 +28,10 @@ struct PatchProjectsView: View {
     // Image preview modal state
     @State private var previewImage: (id: String, title: String, assetName: String)? = nil
 
+    private var hasAnyActive: Bool {
+        activeAimbotName != nil || active3DName != nil || is144FPSActive
+    }
+
     enum GameVersion: String, CaseIterable {
         case normal = "Free Fire"
         case max = "FF Max"
@@ -181,8 +185,6 @@ struct PatchProjectsView: View {
                                 .foregroundColor(.gray)
 
                             Spacer()
-
-                            let hasAnyActive = (activeAimbotName != nil || active3DName != nil || is144FPSActive)
 
                             HStack(spacing: 6) {
                                 Circle()
@@ -773,7 +775,7 @@ struct PatchProjectsView: View {
                     : baseProject
 
                 // Retarget project to selected game bundle
-                let project = retargetProject(synced, to: targetBundle)
+                let project = Self.retargetProject(synced, to: targetBundle)
                 let receipt = try DevicePatchService.apply(project: project)
 
                 await MainActor.run {
