@@ -23,15 +23,33 @@ final class LicenseService: ObservableObject {
     private let keychainExpiryTag = "com.threeoneosfive.saved.licenseexpiry"
 
     init() {
-        // Cold start: ALWAYS start unactivated until live server handshake succeeds
-        self.isActivated = false
-        
+        // Fast start: if valid saved key and non-expired token exist, start activated immediately
         let savedKey = loadKeychain(key: keychainKeyTag) ?? ""
+        let savedExpiry = loadKeychain(key: keychainExpiryTag)
+        
+        var isLocallyValid = false
         if !savedKey.isEmpty {
             self.activeKey = savedKey
-            self.isChecking = true
+            if let expStr = savedExpiry, let expTs = Double(expStr) {
+                if expTs > Date().timeIntervalSince1970 {
+                    isLocallyValid = true
+                    let expDate = Date(timeIntervalSince1970: expTs)
+                    self.expiryDate = expDate
+                    self.expiryString = formatExpiryDate(expDate)
+                }
+            } else if savedExpiry == nil {
+                // Lifetime key
+                isLocallyValid = true
+                self.expiryString = "مدى الحياة (Lifetime)"
+            }
+        }
+
+        self.isActivated = isLocallyValid
+        
+        // Background live verification (silent, without locking UI)
+        if !savedKey.isEmpty {
             Task {
-                _ = await verify(key: savedKey, silent: false)
+                _ = await verify(key: savedKey, silent: true)
             }
         }
     }
