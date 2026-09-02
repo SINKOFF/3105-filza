@@ -6,12 +6,14 @@ import Security
 final class LicenseService: ObservableObject {
     static let shared = LicenseService()
 
-    // KeyAuth App Configuration
-    private let appName = "Dodisiso123's Application"
-    private let ownerID = "a153OigV2p"
-    private let appSecret = "e38f088727f95dde738a68c77d311c661ce35af5fe52dda7d1e4cd3333241e67"
-    private let appVersion = "1.0"
-    private let apiURL = "https://keyauth.win/api/1.3/"
+    // ── Custom License Server Configuration ──
+    // Replace with your live Vercel/Render URL after 1-click deployment
+    #if DEBUG
+    private let serverURL = "http://localhost:3000"
+    #else
+    private let serverURL = "https://3105-license-server.vercel.app"
+    #endif
+    private let hmacSecret = "3105_SECURE_HMAC_KEY_98F7A12BC83"
 
     @Published var isActivated: Bool = false
     @Published var isChecking: Bool = false
@@ -50,58 +52,16 @@ final class LicenseService: ObservableObject {
         return newID
     }
 
-    // Initialize KeyAuth Session
-    private func initializeSession() async throws -> String {
-        if let existing = sessionID, !existing.isEmpty {
-            return existing
-        }
-
-        var components = URLComponents(string: apiURL)!
-        components.queryItems = [
-            URLQueryItem(name: "type", value: "init"),
-            URLQueryItem(name: "name", value: appName),
-            URLQueryItem(name: "ownerid", value: ownerID),
-            URLQueryItem(name: "secret", value: appSecret),
-            URLQueryItem(name: "ver", value: appVersion)
-        ]
-
-        guard let url = components.url else {
-            throw NSError(domain: "KeyAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 10
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw NSError(domain: "KeyAuth", code: -2, userInfo: [NSLocalizedDescriptionKey: "Server response error"])
-        }
-
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw NSError(domain: "KeyAuth", code: -3, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
-        }
-
-        guard let success = json["success"] as? Bool, success,
-              let sid = json["sessionid"] as? String else {
-            let msg = json["message"] as? String ?? "Failed to initialize KeyAuth"
-            throw NSError(domain: "KeyAuth", code: -4, userInfo: [NSLocalizedDescriptionKey: msg])
-        }
-
-        self.sessionID = sid
-        return sid
-    }
-
     // Verify License Key with live server check
     func verify(key: String, silent: Bool = false) async -> Bool {
-        let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !cleanKey.isEmpty else {
             self.isActivated = false
             deleteKeychain(key: keychainKeyTag)
             deleteKeychain(key: keychainExpiryTag)
             if !silent {
                 self.isChecking = false
-                self.errorMessage = "Please enter your license key."
+                self.errorMessage = "يرجى إدخال مفتاح التفعيل."
             }
             return false
         }
@@ -112,131 +72,94 @@ final class LicenseService: ObservableObject {
         }
 
         do {
-            let sid = try await initializeSession()
-            let hwid = deviceHWID
-
-            var components = URLComponents(string: apiURL)!
-            components.queryItems = [
-                URLQueryItem(name: "type", value: "license"),
-                URLQueryItem(name: "key", value: cleanKey),
-                URLQueryItem(name: "hwid", value: hwid),
-                URLQueryItem(name: "sessionid", value: sid),
-                URLQueryItem(name: "name", value: appName),
-                URLQueryItem(name: "ownerid", value: ownerID)
-            ]
-
-            guard let url = components.url else {
-                if !silent { isChecking = false; errorMessage = "Invalid API URL configuration." }
-                self.isActivated = false
-                return false
+            guard let url = URL(string: "\(serverURL)/api/verify") else {
+                throw NSError(domain: "License", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
             }
 
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.timeoutInterval = 10
+
+            let timestamp = Int(Date().timeIntervalSince1970)
+            let nonce = UUID().uuidString
+            let payload: [String: Any] = [
+                "key": cleanKey,
+                "hwid": deviceHWID,
+                "timestamp": timestamp,
+                "nonce": nonce
+            ]
+
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                if !silent { isChecking = false; errorMessage = "Could not connect to KeyAuth server." }
-                self.isActivated = false
-                return false
+                throw NSError(domain: "License", code: -2, userInfo: [NSLocalizedDescriptionKey: "فشل الاتصال بالسيرفر"])
             }
 
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                if !silent { isChecking = false; errorMessage = "Invalid response from server." }
-                self.isActivated = false
-                return false
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let dataObj = json["data"] as? [String: Any] else {
+                throw NSError(domain: "License", code: -3, userInfo: [NSLocalizedDescriptionKey: "رد غير صالح من السيرفر"])
             }
 
-            let success = json["success"] as? Bool ?? false
-            let message = json["message"] as? String ?? "Unknown error"
+            let success = dataObj["success"] as? Bool ?? false
+            let reason = dataObj["reason"] as? String ?? ""
 
             if success {
                 self.activeKey = cleanKey
-                
-                // Parse expiry timestamp accurately
-                var expTimestamp: Double? = nil
-                if let info = json["info"] as? [String: Any],
-                   let subs = info["subscriptions"] as? [[String: Any]],
-                   let firstSub = subs.first,
-                   let expStr = firstSub["expiry"] as? String,
-                   let parsed = Double(expStr), parsed > 0 {
-                    expTimestamp = parsed
-                }
+                let expiresAt = dataObj["expiresAt"] as? String ?? "LIFETIME"
 
-                // If not provided by subscription, check persistent token or default 24h
-                if expTimestamp == nil || expTimestamp == 0 {
-                    if let savedExp = loadKeychain(key: keychainExpiryTag), let ts = Double(savedExp), ts > Date().timeIntervalSince1970 {
-                        expTimestamp = ts
-                    } else {
-                        expTimestamp = Date().addingTimeInterval(86400).timeIntervalSince1970
-                    }
-                }
-
-                if let expTs = expTimestamp {
-                    let expDate = Date(timeIntervalSince1970: expTs)
-                    if expDate > Date() {
-                        self.isActivated = true
-                        self.expiryDate = expDate
-                        self.expiryString = formatExpiryDate(expDate)
-                        saveKeychain(key: keychainKeyTag, value: cleanKey)
-                        saveKeychain(key: keychainExpiryTag, value: String(expTs))
-                        self.errorMessage = nil
-                        if !silent { isChecking = false }
-                        return true
-                    } else {
-                        // Key expired on server
-                        self.isActivated = false
-                        self.activeKey = ""
-                        self.expiryDate = expDate
-                        self.expiryString = "Expired"
-                        deleteKeychain(key: keychainKeyTag)
-                        deleteKeychain(key: keychainExpiryTag)
-                        if !silent {
-                            isChecking = false
-                            self.errorMessage = "This key has expired."
-                        }
-                        return false
-                    }
-                } else {
-                    self.isActivated = true
-                    self.expiryString = "Lifetime"
+                if expiresAt == "LIFETIME" {
+                    self.expiryString = "مدى الحياة (Lifetime)"
                     self.expiryDate = nil
-                    saveKeychain(key: keychainKeyTag, value: cleanKey)
-                    if !silent { isChecking = false }
-                    return true
+                } else {
+                    let isoFormatter = ISO8601DateFormatter()
+                    if let date = isoFormatter.date(from: expiresAt) {
+                        self.expiryDate = date
+                        self.expiryString = formatExpiryDate(date)
+                    }
                 }
+
+                self.isActivated = true
+                saveKeychain(key: keychainKeyTag, value: cleanKey)
+                if let exp = expiryDate {
+                    saveKeychain(key: keychainExpiryTag, value: String(exp.timeIntervalSince1970))
+                }
+                if !silent { isChecking = false }
+                return true
             } else {
-                // Key is invalid, banned, paused, HWID mismatch, or deleted in KeyAuth dashboard
-                if message.lowercased().contains("session") {
-                    self.sessionID = nil
-                }
                 self.isActivated = false
                 self.activeKey = ""
-                self.expiryDate = nil
-                self.expiryString = ""
                 deleteKeychain(key: keychainKeyTag)
                 deleteKeychain(key: keychainExpiryTag)
                 if !silent {
-                    isChecking = false
-                    self.errorMessage = translateKeyAuthMessage(message)
+                    self.isChecking = false
+                    self.errorMessage = translateErrorReason(reason)
                 }
                 return false
             }
         } catch {
-            self.sessionID = nil
             self.isActivated = false
             if !silent {
                 isChecking = false
-                errorMessage = "Connection error: \(error.localizedDescription)"
+                errorMessage = "خطأ في الاتصال: \(error.localizedDescription)"
             }
             return false
         }
     }
 
+    private func translateErrorReason(_ reason: String) -> String {
+        switch reason {
+        case "INVALID_KEY": return "المفتاح غير موجود أو غير صالح."
+        case "HWID_MISMATCH": return "هذا المفتاح مربوط بجهاز آيفون آخر."
+        case "EXPIRED": return "انتهت صلاحية هذا المفتاح."
+        default: return "فشل التحقق من الترخيص."
+        }
+    }
+
     private func formatExpiryDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.locale = Locale(identifier: "ar")
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
