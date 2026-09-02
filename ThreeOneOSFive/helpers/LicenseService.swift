@@ -11,9 +11,9 @@ final class LicenseService: ObservableObject {
     #if DEBUG
     private let serverURL = "http://localhost:3000"
     #else
-    private let serverURL = "https://3105-license-server.vercel.app"
+    private let serverURL = "https://3105-license-server-4lxgmnqte-sinko1.vercel.app"
     #endif
-    private let hmacSecret = "3105_SECURE_HMAC_KEY_98F7A12BC83"
+    private let hmacSecret = "sinko3105_secret_key_abc789xyz"
 
     @Published var isActivated: Bool = false
     @Published var isChecking: Bool = false
