@@ -3,113 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة إدارة المفاتيح | 3105 License Manager</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>لوحة إدارة 3105 | نظام التراخيص v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d1117;
-            --card-bg: #161b22;
+            --bg: #0a0d13;
+            --card-bg: #12171f;
+            --card2: #181e28;
             --accent: #2ea043;
             --accent-hover: #3fb950;
-            --border: #30363d;
+            --blue: #388bfd;
+            --border: #21262d;
             --text: #c9d1d9;
+            --muted: #6e7681;
             --danger: #f85149;
             --warning: #d29922;
+            --purple: #bc8cff;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
-        body { background-color: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { font-size: 26px; color: #58a6ff; }
-        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
-        input, select { width: 100%; padding: 10px; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 14px; }
-        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        button:hover { background: var(--accent-hover); }
-        .btn-danger { background: var(--danger); padding: 6px 12px; font-size: 12px; }
-        .btn-warning { background: var(--warning); color: #000; padding: 6px 12px; font-size: 12px; margin-left: 5px; }
-        .btn-copy { background: #21262d; border: 1px solid var(--border); padding: 4px 8px; font-size: 12px; border-radius: 6px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
-        th { background: #21262d; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .badge-active { background: #238636; color: #fff; }
-        .badge-unused { background: #388bfd33; color: #58a6ff; }
-        .badge-expired { background: #f8514933; color: #f85149; }
-        .key-text { font-family: monospace; font-size: 14px; color: #7ee787; font-weight: bold; }
-        .hwid-text { font-family: monospace; font-size: 11px; color: #8b949e; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── Header ── */
+        .header { background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+        .header-logo { font-size: 22px; font-weight: 900; color: #58a6ff; letter-spacing: 1px; }
+        .header-sub { font-size: 12px; color: var(--muted); }
+        .header-right { margin-right: auto; display: flex; align-items: center; gap: 8px; }
+        .online-badge { display: flex; align-items: center; gap: 6px; background: #1c2a1c; border: 1px solid #2ea043; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #3fb950; }
+        .online-dot { width: 8px; height: 8px; background: #3fb950; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+        /* ── Layout ── */
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+        /* ── Stats bar ── */
+        .stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: 700; }
+        .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .s-active { color: #3fb950; }
+        .s-unused { color: #58a6ff; }
+        .s-expired { color: var(--danger); }
+        .s-paused { color: var(--warning); }
+        .s-banned { color: #ff6b6b; }
+        .s-total { color: var(--purple); }
+
+        /* ── Cards ── */
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #e6edf3; display: flex; align-items: center; gap: 8px; }
+
+        /* ── Form ── */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; align-items: end; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+        input, select { width: 100%; padding: 9px 12px; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; color: #e6edf3; font-size: 13px; font-family: 'Cairo', sans-serif; transition: border-color .2s; }
+        input:focus, select:focus { outline: none; border-color: var(--blue); }
+        .duration-row { display: flex; gap: 8px; align-items: center; }
+        .duration-row input { flex: 1; }
+        .duration-row select { width: 100px; }
+
+        /* ── Buttons ── */
+        .btn { border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: .15s; font-family: 'Cairo', sans-serif; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-blue { background: var(--blue); color: #fff; }
+        .btn-blue:hover { background: #58a6ff; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; font-family: 'Cairo', sans-serif; }
+        .btn-danger { background: #3d1a1a; color: var(--danger); border: 1px solid #5a1e1e; }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-warning { background: #2d2200; color: var(--warning); border: 1px solid #5a4200; }
+        .btn-warning:hover { background: var(--warning); color: #000; }
+        .btn-info { background: #0d2045; color: var(--blue); border: 1px solid #1a3a6e; }
+        .btn-info:hover { background: var(--blue); color: #fff; }
+        .btn-ban { background: #2d0d0d; color: #ff6b6b; border: 1px solid #5a1414; }
+        .btn-ban:hover { background: #c0392b; color: #fff; }
+        .btn-copy { background: #21262d; color: var(--muted); border: 1px solid var(--border); }
+        .btn-copy:hover { color: #e6edf3; }
+        .btn-resume { background: #0d2a0d; color: #3fb950; border: 1px solid #1a5a1a; }
+        .btn-resume:hover { background: var(--accent); color: #fff; }
+
+        /* ── Table ── */
+        .table-wrap { overflow-x: auto; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #161b22; padding: 10px 12px; text-align: right; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 10px 12px; border-bottom: 1px solid #0d1117; vertical-align: middle; }
+        tr:hover td { background: #0f141b; }
+
+        .key-text { font-family: monospace; font-size: 13px; color: #7ee787; font-weight: bold; }
+        .hwid-text { font-family: monospace; font-size: 10px; color: var(--muted); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
+        /* ── Badges ── */
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+        .b-active   { background: #1c2a1c; color: #3fb950; border: 1px solid #2ea04333; }
+        .b-unused   { background: #0d1f40; color: #58a6ff; border: 1px solid #388bfd33; }
+        .b-expired  { background: #2d1111; color: var(--danger); border: 1px solid #f8514933; }
+        .b-paused   { background: #2d2200; color: var(--warning); border: 1px solid #d2992233; }
+        .b-banned   { background: #2d0d0d; color: #ff6b6b; border: 1px solid #ff6b6b33; }
+
+        /* ── Login ── */
+        #loginWrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, #0f1923 0%, #0a0d13 100%); }
+        .login-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; }
+        .login-title { font-size: 22px; font-weight: 900; color: #58a6ff; text-align: center; margin-bottom: 6px; }
+        .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+
+        /* ── Toast ── */
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1f2937; border: 1px solid var(--border); color: #e6edf3; padding: 10px 20px; border-radius: 8px; font-size: 13px; z-index: 999; display: none; }
+
+        /* ── Mobile ── */
+        @media(max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr 1fr; }
+            .stats-bar { grid-template-columns: repeat(3, 1fr); }
+            .header { flex-wrap: wrap; }
+        }
+        @media(max-width: 480px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>🔐 لوحة إدارة تراخيص 3105</h1>
-        <p style="color: #8b949e; font-size: 13px;">توليد وإدارة المفاتيح وربط الـ HWID ضد الكراك والتسريب</p>
-    </div>
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
-    <!-- Login Card -->
-    <div class="card" id="loginCard">
-        <h3>تسجيل الدخول إلى اللوحة</h3>
-        <div class="input-group" style="margin-top: 12px;">
-            <label>كلمة مرور المسؤول (Admin Password):</label>
-            <input type="password" id="adminPassword" placeholder="أدخل كلمة المرور (الافتراضية: admin123456)">
+<!-- LOGIN -->
+<div id="loginWrap">
+    <div class="login-box">
+        <div class="login-title">🔐 3105 License Manager</div>
+        <div class="login-sub">نظام إدارة التراخيص v2 — بدون KeyAuth</div>
+        <div style="margin-bottom:14px;">
+            <label>كلمة مرور المسؤول</label>
+            <input type="password" id="adminPassword" placeholder="أدخل كلمة المرور" onkeydown="if(event.key==='Enter')login()">
         </div>
-        <button onclick="login()">دخول</button>
+        <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="login()">دخول</button>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none;">
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <div class="header-logo">🔐 3105 License Manager</div>
+            <div class="header-sub">نظام إدارة التراخيص v2 — مستقل بالكامل بدون KeyAuth</div>
+        </div>
+        <div class="header-right">
+            <div class="online-badge"><span class="online-dot"></span> مباشر 24/7</div>
+        </div>
     </div>
 
-    <!-- Main Dashboard (Hidden by default) -->
-    <div id="mainDashboard" style="display: none;">
-        
-        <!-- Generate Keys Card -->
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card"><div class="stat-number s-total" id="st-total">-</div><div class="stat-label">إجمالي</div></div>
+            <div class="stat-card"><div class="stat-number s-active" id="st-active">-</div><div class="stat-label">مفعل</div></div>
+            <div class="stat-card"><div class="stat-number s-unused" id="st-unused">-</div><div class="stat-label">غير مستخدم</div></div>
+            <div class="stat-card"><div class="stat-number s-expired" id="st-expired">-</div><div class="stat-label">منتهي</div></div>
+            <div class="stat-card"><div class="stat-number s-paused" id="st-paused">-</div><div class="stat-label">موقوف</div></div>
+            <div class="stat-card"><div class="stat-number s-banned" id="st-banned">-</div><div class="stat-label">محظور</div></div>
+        </div>
+
+        <!-- Generate Keys -->
         <div class="card">
-            <h3>➕ إنشاء مفاتيح جديدة (Generate Keys)</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 12px;">
-                <div class="input-group">
-                    <label>المدة (Duration):</label>
-                    <select id="keyDuration">
-                        <option value="1">1 يوم (Day)</option>
-                        <option value="7">7 أيام (Week)</option>
-                        <option value="30" selected>30 يوم (Month)</option>
-                        <option value="90">90 يوم (3 Months)</option>
-                        <option value="365">سنة (1 Year)</option>
-                        <option value="0">مدى الحياة (Lifetime)</option>
-                    </select>
+            <div class="card-title">➕ إنشاء مفتاح جديد</div>
+            <div class="form-grid">
+                <div>
+                    <label>المدة</label>
+                    <div class="duration-row">
+                        <input type="number" id="durValue" value="30" min="1" placeholder="30">
+                        <select id="durUnit">
+                            <option value="1">ساعة</option>
+                            <option value="24" selected>يوم</option>
+                            <option value="168">أسبوع</option>
+                            <option value="720">شهر</option>
+                            <option value="8760">سنة</option>
+                        </select>
+                    </div>
+                    <div style="margin-top:6px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="checkbox" id="isLifetime" onchange="toggleLifetime()" style="width:auto;"> مدى الحياة (Lifetime)
+                        </label>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label>العدد:</label>
+                <div>
+                    <label>العدد</label>
                     <input type="number" id="keyCount" value="1" min="1" max="50">
                 </div>
-                <div class="input-group">
-                    <label>ملاحظة (اسم المشتري):</label>
+                <div>
+                    <label>اسم المشتري (ملاحظة)</label>
                     <input type="text" id="keyNote" placeholder="مثال: Ahmed VIP">
                 </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" style="width:100%;" onclick="generateKeys()">🔑 توليد المفتاح</button>
+                </div>
             </div>
-            <button onclick="generateKeys()">توليد المفتاح الآن</button>
         </div>
 
-        <!-- Keys List Card -->
+        <!-- Keys Table -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3>📋 قائمة المفاتيح الحالية</h3>
-                <button onclick="loadKeys()" style="padding: 6px 12px; font-size: 13px; background: #21262d; border: 1px solid var(--border);">تحديث القائمة</button>
+            <div class="card-title" style="justify-content:space-between;">
+                <span>📋 قائمة المفاتيح</span>
+                <button class="btn btn-sm btn-info" onclick="loadAll()">⟳ تحديث</button>
             </div>
-            <div style="overflow-x: auto;">
+            <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>المفتاح (License Key)</th>
-                            <th>المدة</th>
+                            <th>المفتاح</th>
                             <th>الحالة</th>
-                            <th>الجهاز المربوط (HWID)</th>
-                            <th>تاريخ الانتهاء</th>
+                            <th>المدة</th>
+                            <th>انتهاء الصلاحية</th>
+                            <th>الجهاز (HWID)</th>
                             <th>ملاحظة</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
-                    <tbody id="keysTableBody">
-                        <tr><td colspan="7" style="text-align: center;">جاري التحميل...</td></tr>
+                    <tbody id="keysBody">
+                        <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">جاري التحميل...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -118,123 +227,175 @@
 </div>
 
 <script>
-    let token = "";
+let token = "";
 
-    function login() {
-        token = document.getElementById('adminPassword').value.trim();
-        if (!token) return alert('يرجى كتابة كلمة المرور');
-        
-        loadKeys(() => {
-            document.getElementById('loginCard').style.display = 'none';
-            document.getElementById('mainDashboard').style.display = 'block';
-        });
-    }
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    t.style.borderColor = isError ? '#f85149' : '#2ea043';
+    t.style.color = isError ? '#f85149' : '#3fb950';
+    setTimeout(() => t.style.display = 'none', 2500);
+}
 
-    function loadKeys(callback) {
-        fetch('/api/admin/keys', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(r => {
-            if (r.status === 401) throw new Error('كلمة المرور غير صحيحة');
-            return r.json();
-        })
-        .then(data => {
-            renderKeys(data.keys || []);
-            if (callback) callback();
-        })
-        .catch(err => {
-            alert(err.message);
-        });
-    }
+function toggleLifetime() {
+    const lt = document.getElementById('isLifetime').checked;
+    document.getElementById('durValue').disabled = lt;
+    document.getElementById('durUnit').disabled = lt;
+}
 
-    function renderKeys(keys) {
-        const tbody = document.getElementById('keysTableBody');
-        if (keys.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">لا توجد مفاتيح حالياً.</td></tr>';
-            return;
+function login() {
+    token = document.getElementById('adminPassword').value.trim();
+    if (!token) return showToast('أدخل كلمة المرور', true);
+    loadAll(() => {
+        document.getElementById('loginWrap').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+    });
+}
+
+function api(path, opts = {}) {
+    return fetch(path, {
+        ...opts,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+    }).then(r => {
+        if (r.status === 401) throw new Error('كلمة مرور خاطئة');
+        return r.json();
+    });
+}
+
+function loadAll(callback) {
+    Promise.all([
+        api('/api/admin/keys'),
+        api('/api/admin/stats')
+    ]).then(([keysData, statsData]) => {
+        renderKeys(keysData.keys || []);
+        if (statsData.stats) {
+            const s = statsData.stats;
+            document.getElementById('st-total').textContent = s.total;
+            document.getElementById('st-active').textContent = s.active;
+            document.getElementById('st-unused').textContent = s.unused;
+            document.getElementById('st-expired').textContent = s.expired;
+            document.getElementById('st-paused').textContent = s.paused;
+            document.getElementById('st-banned').textContent = s.banned;
         }
+        if (callback) callback();
+    }).catch(err => showToast(err.message, true));
+}
 
-        tbody.innerHTML = keys.map(k => {
-            let statusBadge = '<span class="badge badge-unused">غير مفعل</span>';
-            if (k.hwid) {
-                if (k.expiresAt && k.expiresAt !== 'LIFETIME' && new Date() > new Date(k.expiresAt)) {
-                    statusBadge = '<span class="badge badge-expired">منتهي الصلاحية</span>';
-                } else {
-                    statusBadge = '<span class="badge badge-active">مفعل وشغال</span>';
-                }
-            }
+function formatDuration(hours) {
+    if (!hours || hours <= 0) return 'مدى الحياة';
+    if (hours < 24) return `${hours} ساعة`;
+    if (hours < 168) return `${Math.round(hours/24)} يوم`;
+    if (hours < 720) return `${Math.round(hours/168)} أسبوع`;
+    if (hours < 8760) return `${Math.round(hours/720)} شهر`;
+    return `${Math.round(hours/8760)} سنة`;
+}
 
-            const expDate = k.expiresAt ? (k.expiresAt === 'LIFETIME' ? 'مدى الحياة' : new Date(k.expiresAt).toLocaleDateString('ar-EG')) : '-';
-            const durationLabel = k.durationDays === 0 ? 'مدى الحياة' : `${k.durationDays} يوم`;
+function formatDate(iso) {
+    if (!iso || iso === 'LIFETIME') return 'مدى الحياة';
+    const d = new Date(iso);
+    return d.toLocaleDateString('ar-EG') + ' ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
+}
 
-            return `
-                <tr>
-                    <td>
-                        <span class="key-text">${k.key}</span>
-                        <button class="btn-copy" onclick="copyText('${k.key}')">نسخ</button>
-                    </td>
-                    <td>${durationLabel}</td>
-                    <td>${statusBadge}</td>
-                    <td class="hwid-text" title="${k.hwid || 'لم يُربط بعد'}">${k.hwid ? k.hwid.slice(0, 10) + '...' : '-'}</td>
-                    <td>${expDate}</td>
-                    <td>${k.note || '-'}</td>
-                    <td>
-                        ${k.hwid ? `<button class="btn-warning" onclick="resetHwid('${k.key}')">فك الجهاز</button>` : ''}
-                        <button class="btn-danger" onclick="deleteKey('${k.key}')">حذف</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+function statusBadge(k) {
+    const map = {
+        active: ['b-active', '🟢 مفعل'],
+        unused: ['b-unused', '🔵 غير مستخدم'],
+        expired: ['b-expired', '🔴 منتهي'],
+        paused: ['b-paused', '⏸ موقوف'],
+        banned: ['b-banned', '🚫 محظور'],
+    };
+    const [cls, label] = map[k.status] || ['b-unused', k.status];
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function renderKeys(keys) {
+    const tbody = document.getElementById('keysBody');
+    if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">لا توجد مفاتيح. أنشئ أول مفتاح!</td></tr>';
+        return;
     }
+    tbody.innerHTML = keys.map(k => `
+        <tr>
+            <td>
+                <span class="key-text">${k.key}</span>
+                <button class="btn btn-sm btn-copy" onclick="copyText('${k.key}')" style="margin-right:4px;">نسخ</button>
+            </td>
+            <td>${statusBadge(k)}</td>
+            <td>${formatDuration(k.durationHours)}</td>
+            <td style="font-size:11px;">${formatDate(k.expiresAt)}</td>
+            <td><span class="hwid-text" title="${k.hwid || '-'}">${k.hwid ? k.hwid.slice(0,12)+'...' : '—'}</span></td>
+            <td style="font-size:11px;color:var(--muted);">${k.note || '—'}</td>
+            <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    ${k.hwid ? `<button class="btn btn-sm btn-warning" onclick="resetHwid('${k.key}')">فك الجهاز</button>` : ''}
+                    ${k.status === 'paused' || k.status === 'banned'
+                        ? `<button class="btn btn-sm btn-resume" onclick="resumeKey('${k.key}')">تفعيل</button>`
+                        : `<button class="btn btn-sm btn-warning" onclick="pauseKey('${k.key}')">إيقاف</button>`}
+                    <button class="btn btn-sm btn-ban" onclick="banKey('${k.key}')">حظر</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteKey('${k.key}')">حذف</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
 
-    function generateKeys() {
-        const durationDays = document.getElementById('keyDuration').value;
-        const count = document.getElementById('keyCount').value;
-        const note = document.getElementById('keyNote').value;
+function generateKeys() {
+    const isLifetime = document.getElementById('isLifetime').checked;
+    const durValue = parseInt(document.getElementById('durValue').value) || 1;
+    const durUnit = parseInt(document.getElementById('durUnit').value);
+    const durationHours = isLifetime ? 0 : (durValue * durUnit);
+    const count = parseInt(document.getElementById('keyCount').value) || 1;
+    const note = document.getElementById('keyNote').value.trim();
 
-        fetch('/api/admin/keys', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ durationDays, count, note })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert(`تم إنشاء ${data.count} مفتاح بنجاح!`);
-                document.getElementById('keyNote').value = '';
-                loadKeys();
-            }
-        });
-    }
+    api('/api/admin/keys', {
+        method: 'POST',
+        body: JSON.stringify({ durationHours, count, note })
+    }).then(data => {
+        if (data.success) {
+            showToast(`✅ تم إنشاء ${data.count} مفتاح بنجاح!`);
+            document.getElementById('keyNote').value = '';
+            loadAll();
+        }
+    }).catch(err => showToast(err.message, true));
+}
 
-    function resetHwid(key) {
-        if (!confirm(`هل تريد فك ربط الجهاز عن المفتاح ${key} حتى يمكن استخدامه على جهاز آخر؟`)) return;
-        fetch(`/api/admin/keys/${key}/reset-hwid`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(r => r.json())
-        .then(() => loadKeys());
-    }
+function pauseKey(key) {
+    api(`/api/admin/keys/${key}/pause`, { method: 'POST' })
+        .then(() => { showToast(`⏸ تم إيقاف ${key}`); loadAll(); })
+        .catch(err => showToast(err.message, true));
+}
 
-    function deleteKey(key) {
-        if (!confirm(`هل أنت متأكد من حذف المفتاح ${key} نهائياً؟`)) return;
-        fetch(`/api/admin/keys/${key}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(r => r.json())
-        .then(() => loadKeys());
-    }
+function resumeKey(key) {
+    api(`/api/admin/keys/${key}/resume`, { method: 'POST' })
+        .then(() => { showToast(`▶️ تم تفعيل ${key}`); loadAll(); })
+        .catch(err => showToast(err.message, true));
+}
 
-    function copyText(text) {
-        navigator.clipboard.writeText(text);
-        alert(`تم نسخ المفتاح: ${text}`);
-    }
+function banKey(key) {
+    if (!confirm(`حظر المفتاح ${key} نهائياً؟ سيظهر للمستخدم خطأ BANNED.`)) return;
+    api(`/api/admin/keys/${key}/ban`, { method: 'POST' })
+        .then(() => { showToast(`🚫 تم حظر ${key}`); loadAll(); })
+        .catch(err => showToast(err.message, true));
+}
+
+function deleteKey(key) {
+    if (!confirm(`حذف ${key} نهائياً؟`)) return;
+    api(`/api/admin/keys/${key}`, { method: 'DELETE' })
+        .then(() => { showToast(`🗑 تم حذف ${key}`); loadAll(); })
+        .catch(err => showToast(err.message, true));
+}
+
+function resetHwid(key) {
+    if (!confirm(`فك ربط الجهاز عن ${key}؟`)) return;
+    api(`/api/admin/keys/${key}/reset-hwid`, { method: 'POST' })
+        .then(() => { showToast(`🔄 تم فك ربط الجهاز عن ${key}`); loadAll(); })
+        .catch(err => showToast(err.message, true));
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => showToast(`📋 تم نسخ: ${text}`));
+}
 </script>
-
 </body>
 </html>

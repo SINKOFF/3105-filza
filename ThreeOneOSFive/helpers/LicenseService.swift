@@ -150,10 +150,23 @@ final class LicenseService: ObservableObject {
 
     private func translateErrorReason(_ reason: String) -> String {
         switch reason {
-        case "INVALID_KEY": return "المفتاح غير موجود أو غير صالح."
+        case "INVALID_KEY":  return "المفتاح غير موجود أو غير صالح."
         case "HWID_MISMATCH": return "هذا المفتاح مربوط بجهاز آيفون آخر."
-        case "EXPIRED": return "انتهت صلاحية هذا المفتاح."
+        case "EXPIRED":      return "انتهت صلاحية هذا المفتاح."
+        case "PAUSED":       return "تم إيقاف هذا المفتاح مؤقتاً. تواصل مع الدعم."
+        case "BANNED":       return "هذا المفتاح محظور ولا يمكن استخدامه."
+        case "INVALID_HWID": return "جهازك غير مدعوم أو يوجد تلاعب في معرف الجهاز."
         default: return "فشل التحقق من الترخيص."
+        }
+    }
+
+    // Wipe all old KeyAuth Keychain entries — call once on upgrade
+    func purgeOldKeyAuthEntries() {
+        let oldTags = [
+            "com.threeoneosfive.keyauth.hwid"
+        ]
+        for tag in oldTags {
+            deleteKeychain(key: tag)
         }
     }
 
