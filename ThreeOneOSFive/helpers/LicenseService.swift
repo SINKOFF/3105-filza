@@ -7,12 +7,7 @@ final class LicenseService: ObservableObject {
     static let shared = LicenseService()
 
     // ── Custom License Server Configuration ──
-    // Replace with your live Vercel/Render URL after 1-click deployment
-    #if DEBUG
-    private let serverURL = "http://localhost:3000"
-    #else
-    private let serverURL = "https://3105-license-server-4lxgmnqte-sinko1.vercel.app"
-    #endif
+    private let serverURL = "https://3105-license-server.vercel.app"
     private let hmacSecret = "sinko3105_secret_key_abc789xyz"
 
     @Published var isActivated: Bool = false
