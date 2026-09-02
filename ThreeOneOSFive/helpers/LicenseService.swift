@@ -121,23 +121,31 @@ final class LicenseService: ObservableObject {
             if success {
                 self.activeKey = cleanKey
                 let expiresAt = dataObj["expiresAt"] as? String ?? "LIFETIME"
+                let expiresAtTimestamp = dataObj["expiresAtTimestamp"] as? Double ?? 0
+                let durationHours = dataObj["durationHours"] as? Int ?? 0
 
-                if expiresAt == "LIFETIME" {
+                if expiresAt == "LIFETIME" || durationHours == 0 {
                     self.expiryString = "مدى الحياة (Lifetime)"
                     self.expiryDate = nil
+                    saveKeychain(key: keychainExpiryTag, value: "LIFETIME")
                 } else {
-                    let isoFormatter = ISO8601DateFormatter()
-                    if let date = isoFormatter.date(from: expiresAt) {
-                        self.expiryDate = date
-                        self.expiryString = formatExpiryDate(date)
+                    let date: Date
+                    if expiresAtTimestamp > 0 {
+                        date = Date(timeIntervalSince1970: expiresAtTimestamp)
+                    } else if let parsed = parseDate(expiresAt) {
+                        date = parsed
+                    } else if durationHours > 0 {
+                        date = Date().addingTimeInterval(Double(durationHours * 3600))
+                    } else {
+                        date = Date().addingTimeInterval(86400)
                     }
+                    self.expiryDate = date
+                    self.expiryString = formatExpiryDate(date)
+                    saveKeychain(key: keychainExpiryTag, value: String(date.timeIntervalSince1970))
                 }
 
                 self.isActivated = true
                 saveKeychain(key: keychainKeyTag, value: cleanKey)
-                if let exp = expiryDate {
-                    saveKeychain(key: keychainExpiryTag, value: String(exp.timeIntervalSince1970))
-                }
                 if !silent { isChecking = false }
                 return true
             } else {
@@ -181,6 +189,35 @@ final class LicenseService: ObservableObject {
         for tag in oldTags {
             deleteKeychain(key: tag)
         }
+    }
+
+    private func parseDate(_ dateStr: String) -> Date? {
+        if dateStr == "LIFETIME" || dateStr.isEmpty { return nil }
+        
+        let fractionFormatter = ISO8601DateFormatter()
+        fractionFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fractionFormatter.date(from: dateStr) {
+            return d
+        }
+        
+        let standardFormatter = ISO8601DateFormatter()
+        standardFormatter.formatOptions = [.withInternetDateTime]
+        if let d = standardFormatter.date(from: dateStr) {
+            return d
+        }
+        
+        let customFormatter = DateFormatter()
+        customFormatter.locale = Locale(identifier: "en_US_POSIX")
+        customFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+        if let d = customFormatter.date(from: dateStr) {
+            return d
+        }
+        
+        if let ts = Double(dateStr) {
+            return Date(timeIntervalSince1970: ts)
+        }
+        
+        return nil
     }
 
     private func formatExpiryDate(_ date: Date) -> String {
