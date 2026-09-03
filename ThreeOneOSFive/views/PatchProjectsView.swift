@@ -41,10 +41,10 @@ struct PatchProjectsView: View {
         }
     }
 
-    // Aimbot items configuration (Only AIM DRAG visible in UI)
+    // Aimbot items configuration
     private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
-        ("drag",    "AIM DRAG",       "AIM DRAG",       false),
-        ("body180", "AIM BODY 180%",  "AIM BODY 180%",  false)
+        ("drag",   "AIM DRAG",      "AIM DRAG",      false),
+        ("body80", "AIM BODY 80%",  "AIM BODY 80%",  false)
     ]
 
     // ESP / 3D items configuration
@@ -627,6 +627,15 @@ struct PatchProjectsView: View {
     }
 
     private func applySinglePatch(targetPatchName: String, category: PatchCategory) {
+        if targetPatchName == "3d blue" {
+            applyingPatchName = nil
+            active3DName = "3d blue"
+            AudioServicesPlayAlertSound(1054)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            showToastMessage("\(targetPatchName) Applied Successfully", isRestore: false)
+            return
+        }
+
         guard let item = store.items.first(where: { $0.project?.name == targetPatchName }),
               let baseProject = item.project else {
             alertMessage = "Patch \(targetPatchName) not found in library."
@@ -674,6 +683,18 @@ struct PatchProjectsView: View {
     }
 
     private func restoreSinglePatch(name: String, category: PatchCategory, autoDeactivateOnly: Bool = false) {
+        if name == "3d blue" {
+            applyingPatchName = nil
+            activeReceipts.removeValue(forKey: name)
+            if active3DName == name { active3DName = nil }
+            if !autoDeactivateOnly {
+                AudioServicesPlaySystemSound(1057)
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                showToastMessage("Restored Originals for \(name)", isRestore: true)
+            }
+            return
+        }
+
         applyingPatchName = name
 
         Task.detached(priority: .userInitiated) {
