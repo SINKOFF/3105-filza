@@ -43,7 +43,8 @@ struct PatchProjectsView: View {
 
     // Aimbot items configuration (Only AIM DRAG visible in UI)
     private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
-        ("drag", "AIM DRAG", "AIM DRAG", false)
+        ("drag",    "AIM DRAG",       "AIM DRAG",       false),
+        ("body180", "AIM BODY 180%",  "AIM BODY 180%",  false)
     ]
 
     // ESP / 3D items configuration
