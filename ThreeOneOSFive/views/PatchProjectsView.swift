@@ -25,9 +25,6 @@ struct PatchProjectsView: View {
     @State private var alertMessage: String? = nil
     @State private var showAlert: Bool = false
 
-    // Image preview modal state
-    @State private var previewImage: (id: String, title: String, assetName: String)? = nil
-
     private var hasAnyActive: Bool {
         activeAimbotName != nil || active3DName != nil || is144FPSActive
     }
@@ -44,20 +41,17 @@ struct PatchProjectsView: View {
         }
     }
 
-    // Aimbot items configuration
-    private let aimbotList: [(id: String, title: String, patchProjectName: String, assetName: String, isRisk: Bool)] = [
-        ("drag",    "AIM DRAG",      "AIM DRAG",      "preview_aim_drag",    false),
-        ("neck",    "AIM NECK",      "AIM NECK",      "preview_aim_neck",    false),
-        ("body100", "AIM BODY 100%", "AIM BODY 100%", "preview_aim_body100", true),
-        ("body80",  "AIM BODY 80%",  "AIM BODY 80%",  "preview_aim_body80",  false),
-        ("magic",   "AIM MGIC",      "AIM MGIC",      "preview_aim_magic",   false)
+    // Aimbot items configuration (Only AIM DRAG visible in UI)
+    private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
+        ("drag", "AIM DRAG", "AIM DRAG", false)
     ]
 
     // ESP / 3D items configuration
-    private let esp3DList: [(id: String, title: String, patchProjectName: String, assetName: String, color: Color)] = [
-        ("roz",   "3D gen roz",   "3D gen roz",   "preview_3d_roz",   Color(red: 0.95, green: 0.40, blue: 0.70)),
-        ("read",  "3D gen read",  "3D gen read",  "preview_3d_read",  Color(red: 0.95, green: 0.25, blue: 0.30)),
-        ("green", "3D gen green", "3D gen green", "preview_3d_green", Color(red: 0.20, green: 0.85, blue: 0.45))
+    private let esp3DList: [(id: String, title: String, patchProjectName: String, color: Color)] = [
+        ("cyan_white",    "3d Cyan and white",       "3d Cyan and white",       Color(red: 0.20, green: 0.85, blue: 0.95)),
+        ("yellow_green",  "3d Yellow and green",     "3d Yellow and green",     Color(red: 0.85, green: 0.90, blue: 0.20)),
+        ("blue",          "3d blue",                 "3d blue",                 Color(red: 0.25, green: 0.55, blue: 1.00)),
+        ("hologram_blue", "Character Hologram Blue", "Character Hologram Blue", Color(red: 0.35, green: 0.70, blue: 1.00))
     ]
 
     // Neon & Dark Purple Theme Colors
@@ -304,15 +298,9 @@ struct PatchProjectsView: View {
                                 isSelected: isSelected,
                                 isApplying: isCurrentlyApplying,
                                 tintColor: purpleAccent,
-                                assetName: aim.assetName,
                                 isRisk: aim.isRisk,
                                 onToggle: {
                                     togglePatch(name: aim.patchProjectName, category: .aimbot)
-                                },
-                                onEyeTap: {
-                                    withAnimation(.spring()) {
-                                        previewImage = (id: aim.id, title: aim.title, assetName: aim.assetName)
-                                    }
                                 }
                             )
                         }
@@ -346,15 +334,9 @@ struct PatchProjectsView: View {
                                 isSelected: isSelected,
                                 isApplying: isCurrentlyApplying,
                                 tintColor: esp.color,
-                                assetName: esp.assetName,
                                 isRisk: false,
                                 onToggle: {
                                     togglePatch(name: esp.patchProjectName, category: .esp3d)
-                                },
-                                onEyeTap: {
-                                    withAnimation(.spring()) {
-                                        previewImage = (id: esp.id, title: esp.title, assetName: esp.assetName)
-                                    }
                                 }
                             )
                         }
@@ -366,12 +348,10 @@ struct PatchProjectsView: View {
                             isSelected: is144FPSActive,
                             isApplying: is144Applying,
                             tintColor: Color.cyan,
-                            assetName: nil,
                             isRisk: false,
                             onToggle: {
                                 togglePatch(name: "144 FPS", category: .fps)
-                            },
-                            onEyeTap: nil
+                            }
                         )
                     }
 
@@ -473,86 +453,6 @@ struct PatchProjectsView: View {
                 }
                 .zIndex(10)
             }
-
-            // ── Interactive Eye Image Preview Modal ─────────────────────────
-            if let preview = previewImage {
-                ZStack {
-                    // Dark blurred backdrop
-                    Color.black.opacity(0.82)
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            withAnimation(.spring()) { previewImage = nil }
-                        }
-
-                    VStack(spacing: 16) {
-                        // Modal Header
-                        HStack {
-                            HStack(spacing: 8) {
-                                Image(systemName: "eye.fill")
-                                    .foregroundColor(purpleAccent)
-                                Text(preview.title)
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-
-                            Spacer()
-
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                withAnimation(.spring()) {
-                                    previewImage = nil
-                                }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.gray.opacity(0.8))
-                            }
-                        }
-
-                        // Preview Image Container
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.black.opacity(0.6))
-                                .frame(height: 280)
-
-                            if let uiImg = UIImage(named: preview.assetName) {
-                                Image(uiImage: uiImg)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxHeight: 270)
-                                    .cornerRadius(12)
-                            } else {
-                                Image(preview.assetName)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxHeight: 270)
-                                    .cornerRadius(12)
-                            }
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(purpleAccent.opacity(0.4), lineWidth: 1)
-                        )
-
-                        Text("Tap anywhere or close button to dismiss")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.gray.opacity(0.8))
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 22)
-                            .fill(Color(red: 0.12, green: 0.08, blue: 0.22).opacity(0.96))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22)
-                            .stroke(purpleAccent.opacity(0.5), lineWidth: 1.5)
-                    )
-                    .shadow(color: purpleAccent.opacity(0.4), radius: 24)
-                    .padding(.horizontal, 24)
-                    .transition(.scale(scale: 0.9).combined(with: .opacity))
-                }
-                .zIndex(20)
-            }
         }
         .alert(isPresented: $showAlert) {
             Alert(
@@ -596,117 +496,85 @@ struct PatchProjectsView: View {
         isSelected: Bool,
         isApplying: Bool,
         tintColor: Color,
-        assetName: String?,
         isRisk: Bool,
-        onToggle: @escaping () -> Void,
-        onEyeTap: (() -> Void)?
+        onToggle: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 12) {
-            // Main clickable area for toggling patch
-            Button {
-                onToggle()
-            } label: {
-                HStack(spacing: 14) {
-                    // Checkbox / Status Indicator
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 7)
-                            .stroke(isSelected ? tintColor : Color.gray.opacity(0.4), lineWidth: 1.5)
-                            .frame(width: 22, height: 22)
+        Button {
+            onToggle()
+        } label: {
+            HStack(spacing: 14) {
+                // Checkbox / Status Indicator
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(isSelected ? tintColor : Color.gray.opacity(0.4), lineWidth: 1.5)
+                        .frame(width: 22, height: 22)
 
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(tintColor)
-                                .frame(width: 14, height: 14)
-                                .shadow(color: tintColor.opacity(0.6), radius: 3)
-                        }
-                    }
-
-                    HStack(spacing: 8) {
-                        Text(title)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(isSelected ? .white : .gray.opacity(0.9))
-
-                        if isRisk {
-                            Text("RISK")
-                                .font(.system(size: 9, weight: .black, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.red)
-                                .cornerRadius(4)
-                                .shadow(color: Color.red.opacity(0.5), radius: 3)
-                        }
-                    }
-
-                    Spacer()
-
-                    if isApplying {
-                        ProgressView()
-                            .tint(tintColor)
-                            .scaleEffect(0.8)
-                    } else if isSelected {
-                        Text("ON")
-                            .font(.system(size: 11, weight: .heavy))
-                            .foregroundColor(tintColor)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(tintColor.opacity(0.18))
-                            .cornerRadius(6)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(tintColor.opacity(0.4), lineWidth: 1)
-                            )
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(tintColor)
+                            .frame(width: 14, height: 14)
+                            .shadow(color: tintColor.opacity(0.6), radius: 3)
                     }
                 }
-            }
-            .buttonStyle(.plain)
 
-            // Eye Preview Button
-            if let onEyeTap = onEyeTap, assetName != nil {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onEyeTap()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                previewImage?.assetName == assetName
-                                    ? purpleAccent.opacity(0.3)
-                                    : Color.white.opacity(0.06)
-                            )
-                            .frame(width: 34, height: 34)
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : .gray.opacity(0.9))
 
-                        Image(systemName: previewImage?.assetName == assetName ? "eye.fill" : "eye")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(
-                                previewImage?.assetName == assetName
-                                    ? purpleGlow
-                                    : .gray.opacity(0.8)
-                            )
+                    if isRisk {
+                        Text("RISK")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.red)
+                            .cornerRadius(4)
+                            .shadow(color: Color.red.opacity(0.5), radius: 3)
                     }
                 }
-                .buttonStyle(.plain)
+
+                Spacer()
+
+                if isApplying {
+                    ProgressView()
+                        .tint(tintColor)
+                        .scaleEffect(0.8)
+                } else if isSelected {
+                    Text("ON")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(tintColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(tintColor.opacity(0.18))
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(tintColor.opacity(0.4), lineWidth: 1)
+                        )
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        isSelected
+                            ? Color(red: 0.13, green: 0.08, blue: 0.22).opacity(0.9)
+                            : Color.white.opacity(0.04)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(
+                        isSelected
+                            ? tintColor.opacity(0.6)
+                            : Color.white.opacity(0.06),
+                        lineWidth: isSelected ? 1.2 : 1
+                    )
+            )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(
-                    isSelected
-                        ? Color(red: 0.13, green: 0.08, blue: 0.22).opacity(0.9)
-                        : Color.white.opacity(0.04)
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(
-                    isSelected
-                        ? tintColor.opacity(0.6)
-                        : Color.white.opacity(0.06),
-                    lineWidth: isSelected ? 1.2 : 1
-                )
-        )
+        .buttonStyle(.plain)
         .padding(.horizontal, 20)
     }
 

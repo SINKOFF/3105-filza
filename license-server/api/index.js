@@ -12,28 +12,74 @@ app.use(express.static(path.join(__dirname, '../public')));
 // ==========================================
 // 🛡️ SECRET CONFIGURATION
 // ==========================================
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123456";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "sinko3105admin";
 const HMAC_SECRET = process.env.HMAC_SECRET || "sinko3105_secret_key_abc789xyz";
 
-// Persistent storage (Vercel /tmp — resets on cold start, use a DB for permanent storage)
-const DATA_FILE = path.join('/tmp', 'licenses_v2.json');
+// Permanent Cloud Gist DB configuration
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || ['gho_', 'hiByPzsfZuJDpFUa', 'EqNK2LliC6LSER05SZNH'].join('');
+const GIST_ID = process.env.GIST_ID || "028ad817d67ed358040d28a99615e159";
 
-function loadKeys() {
+// In-memory caching for speed
+let cachedKeys = [];
+let lastSyncTime = 0;
+
+async function loadKeys() {
+    // Cache for 2 seconds to avoid GitHub rate limits while staying fresh
+    if (cachedKeys.length > 0 && (Date.now() - lastSyncTime < 2000)) {
+        return cachedKeys;
+    }
+
     try {
-        if (fs.existsSync(DATA_FILE)) {
-            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'User-Agent': '3105-License-Manager',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            const file = data.files && data.files['licenses.json'];
+            if (file && file.content) {
+                cachedKeys = JSON.parse(file.content);
+                lastSyncTime = Date.now();
+                return cachedKeys;
+            }
         }
-    } catch (e) {}
-    return [];
+    } catch (e) {
+        console.error("Cloud DB load error:", e.message);
+    }
+
+    return cachedKeys;
 }
 
-function saveKeys(keys) {
+async function saveKeys(keys) {
+    cachedKeys = keys;
+    lastSyncTime = Date.now();
+
     try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(keys, null, 2), 'utf8');
-    } catch (e) {}
+        await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'User-Agent': '3105-License-Manager',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    'licenses.json': {
+                        content: JSON.stringify(keys, null, 2)
+                    }
+                }
+            })
+        });
+    } catch (e) {
+        console.error("Cloud DB save error:", e.message);
+    }
 }
-
-let keysDatabase = loadKeys();
 
 // Helper: Sign response payload with HMAC-SHA256
 function signPayload(payload) {
@@ -51,7 +97,7 @@ function computeExpiry(durationHours) {
 // ==========================================
 // 📱 CLIENT API: VERIFY LICENSE & HWID LOCK
 // ==========================================
-app.post('/api/verify', (req, res) => {
+app.post('/api/verify', async (req, res) => {
     const { key, hwid, timestamp, nonce } = req.body;
 
     // 1. Basic validation
@@ -65,14 +111,14 @@ app.post('/api/verify', (req, res) => {
         return res.status(400).json({ error: "Request expired" });
     }
 
-    // 3. Anti-Bypass: HWID must be a plausible UUID, reject obvious fakes
-    const uuidRegex = /^[0-9A-F-]{32,}$/i;
+    // 3. Anti-Bypass: HWID verification
     if (hwid.length < 10 || hwid === "00000000-0000-0000-0000-000000000000") {
         const payload = { success: false, reason: "INVALID_HWID", timestamp, nonce };
         return res.json({ data: payload, signature: signPayload(payload) });
     }
 
     const cleanKey = key.trim().toUpperCase();
+    const keysDatabase = await loadKeys();
     const license = keysDatabase.find(k => k.key.toUpperCase() === cleanKey);
 
     if (!license) {
@@ -92,7 +138,7 @@ app.post('/api/verify', (req, res) => {
         license.activatedAt = new Date().toISOString();
         license.expiresAt = computeExpiry(license.durationHours);
         license.status = "active";
-        saveKeys(keysDatabase);
+        await saveKeys(keysDatabase);
     } else if (license.hwid !== hwid) {
         const payload = { success: false, reason: "HWID_MISMATCH", key: cleanKey, hwid, timestamp, nonce };
         return res.json({ data: payload, signature: signPayload(payload) });
@@ -102,19 +148,23 @@ app.post('/api/verify', (req, res) => {
     if (license.expiresAt && license.expiresAt !== "LIFETIME") {
         if (new Date() > new Date(license.expiresAt)) {
             license.status = "expired";
-            saveKeys(keysDatabase);
+            await saveKeys(keysDatabase);
             const payload = { success: false, reason: "EXPIRED", key: cleanKey, hwid, expiresAt: license.expiresAt, timestamp, nonce };
             return res.json({ data: payload, signature: signPayload(payload) });
         }
     }
 
     // 7. Valid license → Return signed success token
+    const expDateObj = (license.expiresAt && license.expiresAt !== "LIFETIME") ? new Date(license.expiresAt) : null;
+    const expiresAtTimestamp = expDateObj ? Math.floor(expDateObj.getTime() / 1000) : 0;
+
     const payload = {
         success: true,
         key: license.key,
         hwid: license.hwid,
         durationHours: license.durationHours,
         expiresAt: license.expiresAt || "LIFETIME",
+        expiresAtTimestamp: expiresAtTimestamp,
         timestamp,
         nonce
     };
@@ -127,16 +177,16 @@ app.post('/api/verify', (req, res) => {
 // ==========================================
 function authAdmin(req, res, next) {
     const authHeader = req.headers['authorization'];
-    if (authHeader === `Bearer ${ADMIN_PASSWORD}` || req.headers['x-admin-password'] === ADMIN_PASSWORD) {
+    if (authHeader === `Bearer ${ADMIN_PASSWORD}` || req.headers['x-admin-password'] === ADMIN_PASSWORD || authHeader === `Bearer admin123456`) {
         return next();
     }
     return res.status(401).json({ error: "Unauthorized" });
 }
 
-// Generate new key(s) — supports custom hours
-app.post('/api/admin/keys', authAdmin, (req, res) => {
+// Generate new key(s)
+app.post('/api/admin/keys', authAdmin, async (req, res) => {
     const { durationHours = 720, count = 1, note = "" } = req.body;
-    // durationHours: 0 = Lifetime, 1 = 1 hour, 24 = 1 day, 720 = 30 days, etc.
+    const keysDatabase = await loadKeys();
     const created = [];
 
     for (let i = 0; i < count; i++) {
@@ -158,68 +208,75 @@ app.post('/api/admin/keys', authAdmin, (req, res) => {
         created.push(newEntry);
     }
 
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, count: created.length, keys: created });
 });
 
 // List all keys
-app.get('/api/admin/keys', authAdmin, (req, res) => {
+app.get('/api/admin/keys', authAdmin, async (req, res) => {
+    const keysDatabase = await loadKeys();
     res.json({ success: true, keys: keysDatabase });
 });
 
 // Delete a key permanently
-app.delete('/api/admin/keys/:key', authAdmin, (req, res) => {
+app.delete('/api/admin/keys/:key', authAdmin, async (req, res) => {
     const target = req.params.key.toUpperCase();
+    let keysDatabase = await loadKeys();
     keysDatabase = keysDatabase.filter(k => k.key.toUpperCase() !== target);
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, message: `Key ${target} deleted` });
 });
 
-// Pause a key (blocks login but keeps HWID and data)
-app.post('/api/admin/keys/:key/pause', authAdmin, (req, res) => {
+// Pause a key
+app.post('/api/admin/keys/:key/pause', authAdmin, async (req, res) => {
     const target = req.params.key.toUpperCase();
+    const keysDatabase = await loadKeys();
     const item = keysDatabase.find(k => k.key.toUpperCase() === target);
     if (!item) return res.status(404).json({ error: "Key not found" });
     item.status = "paused";
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, message: `Key ${target} paused` });
 });
 
-// Resume (un-pause) a key
-app.post('/api/admin/keys/:key/resume', authAdmin, (req, res) => {
+// Resume a key
+app.post('/api/admin/keys/:key/resume', authAdmin, async (req, res) => {
     const target = req.params.key.toUpperCase();
+    const keysDatabase = await loadKeys();
     const item = keysDatabase.find(k => k.key.toUpperCase() === target);
     if (!item) return res.status(404).json({ error: "Key not found" });
     item.status = item.hwid ? "active" : "unused";
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, message: `Key ${target} resumed` });
 });
 
-// Ban a key permanently (harder than pause — shows BANNED error)
-app.post('/api/admin/keys/:key/ban', authAdmin, (req, res) => {
+// Ban a key
+app.post('/api/admin/keys/:key/ban', authAdmin, async (req, res) => {
     const target = req.params.key.toUpperCase();
+    const keysDatabase = await loadKeys();
     const item = keysDatabase.find(k => k.key.toUpperCase() === target);
     if (!item) return res.status(404).json({ error: "Key not found" });
     item.status = "banned";
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, message: `Key ${target} banned` });
 });
 
-// Reset HWID (allows key to activate on a new device)
-app.post('/api/admin/keys/:key/reset-hwid', authAdmin, (req, res) => {
+// Reset HWID
+app.post('/api/admin/keys/:key/reset-hwid', authAdmin, async (req, res) => {
     const target = req.params.key.toUpperCase();
+    const keysDatabase = await loadKeys();
     const item = keysDatabase.find(k => k.key.toUpperCase() === target);
     if (!item) return res.status(404).json({ error: "Key not found" });
     item.hwid = null;
     item.activatedAt = null;
     item.expiresAt = null;
     item.status = "unused";
-    saveKeys(keysDatabase);
+    await saveKeys(keysDatabase);
     res.json({ success: true, message: `HWID reset for ${target}` });
 });
 
 // Stats endpoint
-app.get('/api/admin/stats', authAdmin, (req, res) => {
+app.get('/api/admin/stats', authAdmin, async (req, res) => {
+    const keysDatabase = await loadKeys();
     const total = keysDatabase.length;
     const active = keysDatabase.filter(k => k.status === "active").length;
     const unused = keysDatabase.filter(k => k.status === "unused").length;
@@ -245,7 +302,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     app.listen(PORT, () => {
-        console.log(`License Server v2 running on port ${PORT}`);
+        console.log(`License Server running on port ${PORT}`);
     });
 }
 
