@@ -1019,8 +1019,7 @@ final class NextDNSService: ObservableObject {
 
             if self.manager.isEnabled {
                 // Deactivate
-                self.manager.isEnabled = false
-                self.manager.saveToPreferences { [weak self] err in
+                self.manager.removeFromPreferences { [weak self] err in
                     DispatchQueue.main.async {
                         self?.isLoading = false
                         self?.isEnabled = false
@@ -1040,7 +1039,6 @@ final class NextDNSService: ObservableObject {
                 doh.serverURL = URL(string: "https://dns.nextdns.io/\(cleanID)")
                 self.manager.dnsSettings = doh
                 self.manager.localizedDescription = "NextDNS (\(cleanID))"
-                self.manager.isEnabled = true
 
                 self.manager.saveToPreferences { [weak self] saveErr in
                     DispatchQueue.main.async {
