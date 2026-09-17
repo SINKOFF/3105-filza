@@ -1,10 +1,16 @@
 import SwiftUI
 import UIKit
 import AudioToolbox
+import NetworkExtension
 
 struct PatchProjectsView: View {
     @StateObject private var store = PatchProjectStore()
     @State private var selectedGame: GameVersion = .normal
+
+    // NextDNS / DNS BAN State
+    @StateObject private var nextDNSService = NextDNSService.shared
+    @AppStorage("nextdns_config_id") private var nextDNSConfigID: String = "1e1e38"
+    @State private var showNextDNSSettingsSheet: Bool = false
 
     // Independent multi-category active states
     @State private var activeAimbotName: String? = nil
@@ -402,6 +408,9 @@ struct PatchProjectsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
 
+                    // ── DNS BAN (NextDNS Engine) ────────────────────────────
+                    dnsBanSection
+
                     Spacer(minLength: 40)
                 }
             }
@@ -776,4 +785,364 @@ struct PatchProjectsView: View {
         }
         return modified
     }
+
+
+    // ── DNS BAN Section (NextDNS Engine) ────────────────────────────────────
+    private var dnsBanSection: some View {
+        VStack(spacing: 12) {
+            // Header
+            HStack {
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(nextDNSService.isEnabled ? Color.green.opacity(0.2) : purpleAccent.opacity(0.15))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: nextDNSService.isEnabled ? "checkmark.shield.fill" : "shield.lefthalf.filled")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(nextDNSService.isEnabled ? .green : purpleAccent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("DNS BAN")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                            Text("NEXTDNS")
+                                .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(nextDNSService.isEnabled ? Color.green.opacity(0.25) : purpleAccent.opacity(0.2))
+                                .foregroundColor(nextDNSService.isEnabled ? .green : purpleGlow)
+                                .cornerRadius(4)
+                        }
+                        Text("Encrypted DoH Anti-Ban Filter")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Spacer()
+
+                // Configuration ID Button
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showNextDNSSettingsSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 11))
+                        Text(nextDNSConfigID.isEmpty ? "Config" : nextDNSConfigID)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.08))
+                    .foregroundColor(.white.opacity(0.9))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+                }
+            }
+
+            // Big NextDNS Activation Toggle (Turn ON = Glowing Green, Turn OFF = Stopped)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                nextDNSService.toggle(configID: nextDNSConfigID) { success in
+                    if success {
+                        if nextDNSService.isEnabled {
+                            AudioServicesPlayAlertSound(1054)
+                            showToastMessage("DNS BAN Activated (\(nextDNSConfigID))", isRestore: false)
+                        } else {
+                            AudioServicesPlaySystemSound(1057)
+                            showToastMessage("DNS BAN Stopped", isRestore: true)
+                        }
+                    } else if let err = nextDNSService.errorMessage {
+                        alertMessage = "NextDNS: \(err)"
+                        showAlert = true
+                    }
+                }
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(nextDNSService.isEnabled ? Color.white.opacity(0.25) : Color.white.opacity(0.08))
+                            .frame(width: 42, height: 42)
+
+                        if nextDNSService.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "power")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(nextDNSService.isEnabled ? "DNS BAN IS ACTIVE" : "ENABLE DNS BAN")
+                            .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                            .foregroundColor(.white)
+
+                        Text(nextDNSService.isEnabled ? "Connected (ID: \(nextDNSConfigID))" : "Tap to activate NextDNS protection")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Status Indicator
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(nextDNSService.isEnabled ? Color.white : Color.gray)
+                            .frame(width: 7, height: 7)
+                        Text(nextDNSService.isEnabled ? "CONNECTED" : "OFF")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.25))
+                    .cornerRadius(6)
+                }
+                .padding(14)
+                .background(
+                    nextDNSService.isEnabled ?
+                    LinearGradient(
+                        colors: [Color(red: 0.12, green: 0.78, blue: 0.38), Color(red: 0.08, green: 0.62, blue: 0.28)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ) :
+                    LinearGradient(
+                        colors: [Color(red: 0.15, green: 0.10, blue: 0.22), Color(red: 0.11, green: 0.07, blue: 0.18)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(nextDNSService.isEnabled ? Color.green.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1.5)
+                )
+                .shadow(color: nextDNSService.isEnabled ? Color.green.opacity(0.4) : Color.clear, radius: 10, y: 3)
+            }
+
+            // Quick actions (iOS Settings / Install Apple Profile)
+            HStack(spacing: 10) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    nextDNSService.openIOSSettings()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 10))
+                        Text("iOS DNS Settings")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(Color.white.opacity(0.05))
+                    .foregroundColor(.gray)
+                    .cornerRadius(8)
+                }
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    nextDNSService.openNextDNSProfile(configID: nextDNSConfigID)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.doc.fill")
+                            .font(.system(size: 10))
+                        Text("Apple Profile (Backup)")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(Color.white.opacity(0.05))
+                    .foregroundColor(.gray)
+                    .cornerRadius(8)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(red: 0.10, green: 0.07, blue: 0.16).opacity(0.85))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(nextDNSService.isEnabled ? Color.green.opacity(0.5) : purpleAccent.opacity(0.25), lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+    }
 }
+
+// ── NextDNS Native Service ──────────────────────────────────────────────────
+final class NextDNSService: ObservableObject {
+    static let shared = NextDNSService()
+
+    @Published var isEnabled: Bool = false
+    @Published var isLoading: Bool = false
+    @Published var statusText: String = "Disconnected"
+    @Published var errorMessage: String? = nil
+
+    private let manager = NEDNSSettingsManager.shared()
+
+    private init() {
+        refreshStatus()
+    }
+
+    func refreshStatus() {
+        manager.loadFromPreferences { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.isEnabled = self?.manager.isEnabled ?? false
+                self?.statusText = (self?.manager.isEnabled ?? false) ? "Connected" : "Disconnected"
+            }
+        }
+    }
+
+    func toggle(configID: String, completion: @escaping (Bool) -> Void) {
+        isLoading = true
+        errorMessage = nil
+
+        manager.loadFromPreferences { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.errorMessage = error.localizedDescription
+                    completion(false)
+                }
+                return
+            }
+
+            if self.manager.isEnabled {
+                // Deactivate
+                self.manager.isEnabled = false
+                self.manager.saveToPreferences { [weak self] err in
+                    DispatchQueue.main.async {
+                        self?.isLoading = false
+                        self?.isEnabled = false
+                        self?.statusText = "Disconnected"
+                        completion(true)
+                    }
+                }
+            } else {
+                // Activate
+                let cleanID = configID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "1e1e38" : configID.trimmingCharacters(in: .whitespacesAndNewlines)
+                let doh = NEDNSOverHTTPSSettings(servers: [
+                    "45.90.28.0",
+                    "45.90.30.0",
+                    "2a07:a8c0::",
+                    "2a07:a8c1::"
+                ])
+                doh.serverURL = URL(string: "https://dns.nextdns.io/\(cleanID)")
+                self.manager.dnsSettings = doh
+                self.manager.localizedDescription = "NextDNS (\(cleanID))"
+                self.manager.isEnabled = true
+
+                self.manager.saveToPreferences { [weak self] saveErr in
+                    DispatchQueue.main.async {
+                        self?.isLoading = false
+                        if let saveErr = saveErr {
+                            self?.errorMessage = saveErr.localizedDescription
+                            completion(false)
+                        } else {
+                            self?.isEnabled = true
+                            self?.statusText = "Connected"
+                            completion(true)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func openIOSSettings() {
+        if let url = URL(string: "App-Prefs:root=General&path=ManagedConfigurationList"), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        } else if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    func openNextDNSProfile(configID: String) {
+        let cleanID = configID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "1e1e38" : configID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: "https://apple.nextdns.io/\(cleanID)") {
+            UIApplication.shared.open(url)
+        }
+    }
+}
+
+// ── NextDNS Exact Configuration ID View ─────────────────────────────────────
+struct NextDNSConfigIDView: View {
+    @Binding var configID: String
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var localID: String = ""
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(UIColor.systemGroupedBackground)
+                    .ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        TextField("Configuration ID", text: $localID)
+                            .font(.system(size: 17))
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+
+                        if !localID.isEmpty {
+                            Button {
+                                localID = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+
+                    Text("Find your Configuration ID on the NextDNS Setup page.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 28)
+
+                    Spacer()
+                }
+            }
+            .navigationBarTitle("Configuration ID", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button(action: {
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Settings")
+                            .font(.system(size: 17))
+                    }
+                    .foregroundColor(.blue)
+                },
+                trailing: Button("Save") {
+                    configID = localID.trimmingCharacters(in: .whitespacesAndNewlines)
+                    NextDNSService.shared.refreshStatus()
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.blue)
+            )
+        }
+        .onAppear {
+            localID = configID
+        }
+    }
+}
+
