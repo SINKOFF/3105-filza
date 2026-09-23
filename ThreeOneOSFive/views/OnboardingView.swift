@@ -154,7 +154,7 @@ struct OnboardingView: View {
             Text("SINKO")
                 .font(.title.weight(.heavy))
                 .foregroundStyle(AppTheme.accent)
-                .kerning(3)
+                .modifier(CompatKerning(kern: 3))
             VStack(spacing: 10) {
                 Text(language.text("onboarding.welcome_title"))
                     .font(.title2.weight(.bold))

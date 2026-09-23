@@ -358,3 +358,13 @@ extension View {
     }
 }
 
+struct CompatKerning: ViewModifier {
+    let kern: CGFloat
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.kerning(kern)
+        } else {
+            content
+        }
+    }
+}
