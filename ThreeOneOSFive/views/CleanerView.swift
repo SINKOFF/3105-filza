@@ -63,7 +63,7 @@ struct CleanerView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             VStack(spacing: 0) {
                 AppSearchField(
                     text: $searchText,
@@ -76,7 +76,7 @@ struct CleanerView: View {
             }
             .navigationTitle(language.text("cleaner.title"))
             .navigationBarTitleDisplayMode(.inline)
-            .scrollDismissesKeyboard(.interactively)
+            .compatScrollDismissesKeyboard()
             .toolbar { toolbarContent }
             .alert(item: $activeAlert, content: alert(for:))
             .onAppear {
@@ -101,11 +101,11 @@ struct CleanerView: View {
 
     private var summarySection: some View {
         Section {
-            LabeledContent(language.text("cleaner.available")) {
+            CompatLabeledContent(language.text("cleaner.available")) {
                 Text(sizeText(totalAvailableBytes))
                     .monospacedDigit()
             }
-            LabeledContent(language.text("cleaner.selected")) {
+            CompatLabeledContent(language.text("cleaner.selected")) {
                 Text(language.text("cleaner.selected_summary", Int64(selectedBundleIDs.count), sizeText(selectedBytes)))
                     .monospacedDigit()
             }
@@ -298,7 +298,7 @@ struct CleanerView: View {
                         ? language.text("cleaner.cleaning")
                         : language.text("cleaner.clean_button", sizeText(selectedBytes))
                 )
-                .fontWeight(.semibold)
+                .compatFontWeight(.semibold)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
         }

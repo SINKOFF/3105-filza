@@ -8,7 +8,7 @@ struct FilesTabSwitcherView: View {
     @State private var renameText = ""
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             List {
                 ForEach(session.tabs) { tab in
                     Button {

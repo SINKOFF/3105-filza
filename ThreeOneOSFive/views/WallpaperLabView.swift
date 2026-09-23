@@ -28,7 +28,7 @@ struct WallpaperLabView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             List {
                 accessSection
                 packagesSection
@@ -182,7 +182,7 @@ struct WallpaperLabView: View {
 
     private var resetSection: some View {
         Section {
-            LabeledContent(language.text("wallpaper.installed_by_3105")) {
+            CompatLabeledContent(language.text("wallpaper.installed_by_3105")) {
                 Text("\(activeReceipts.reduce(0) { $0 + $1.installedDescriptors.count })")
                     .monospacedDigit()
             }
@@ -220,7 +220,7 @@ struct WallpaperLabView: View {
             }
         } label: {
             Text(language.text("wallpaper.install"))
-                .fontWeight(.semibold)
+                .compatFontWeight(.semibold)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)

@@ -73,37 +73,52 @@ struct ContentView: View {
     }
 
     private var regularLayout: some View {
-        NavigationSplitView {
-            List {
-                ForEach(featureVisibility.visibleSections) { section in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            tabNavigation.select(section.rawValue)
-                        }
-                    } label: {
-                        Label(language.text(section.titleKey), systemImage: section.systemImage)
-                            .fontWeight(section.rawValue == tabNavigation.selectedTab ? .semibold : .regular)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(
-                        section.rawValue == tabNavigation.selectedTab
-                            ? AppTheme.accent.opacity(0.14)
-                            : Color.clear
-                    )
-                    .accessibilityAddTraits(
-                        section.rawValue == tabNavigation.selectedTab ? .isSelected : []
-                    )
+        Group {
+            if #available(iOS 16.0, *) {
+                NavigationSplitView {
+                    regularSidebarList
+                        .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
+                } detail: {
+                    sectionContent(selectedVisibleSection)
+                        .id(selectedVisibleSection.rawValue)
                 }
+                .navigationSplitViewStyle(.balanced)
+            } else {
+                NavigationView {
+                    regularSidebarList
+                    sectionContent(selectedVisibleSection)
+                        .id(selectedVisibleSection.rawValue)
+                }
+                .navigationViewStyle(.columns)
             }
-            .navigationTitle("3105")
-            .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
-        } detail: {
-            sectionContent(selectedVisibleSection)
-                .id(selectedVisibleSection.rawValue)
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var regularSidebarList: some View {
+        List {
+            ForEach(featureVisibility.visibleSections) { section in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        tabNavigation.select(section.rawValue)
+                    }
+                } label: {
+                    Label(language.text(section.titleKey), systemImage: section.systemImage)
+                        .compatFontWeight(section.rawValue == tabNavigation.selectedTab ? .semibold : .regular)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(
+                    section.rawValue == tabNavigation.selectedTab
+                        ? AppTheme.accent.opacity(0.14)
+                        : Color.clear
+                )
+                .accessibilityAddTraits(
+                    section.rawValue == tabNavigation.selectedTab ? .isSelected : []
+                )
+            }
+        }
+        .navigationTitle("3105")
     }
 
     @ViewBuilder
@@ -214,7 +229,7 @@ private struct DashboardView: View {
     let wallpapersSupported: Bool
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             List {
                 deviceSection
                 featuresSection

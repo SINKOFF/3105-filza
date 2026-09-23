@@ -41,7 +41,7 @@ struct PatchProjectEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             Form {
                 Section(language.text("patch.project")) {
                     TextField(language.text("patch.project_name"), text: $name)
@@ -51,7 +51,7 @@ struct PatchProjectEditorView: View {
                 if existingProject == nil {
                     Section {
                         if let capturedBundle = initialDraft?.bundleIdentifiers.first {
-                            LabeledContent(language.text("patch.target_bundle")) {
+                            CompatLabeledContent(language.text("patch.target_bundle")) {
                                 Text(capturedBundle)
                                     .font(.caption.monospaced())
                                     .foregroundStyle(.secondary)
@@ -97,7 +97,7 @@ struct PatchProjectEditorView: View {
                             }
                         }
                         if !directories.isEmpty {
-                            LabeledContent(language.text("patch.folders")) {
+                            CompatLabeledContent(language.text("patch.folders")) {
                                 Text("\(directories.count)")
                                     .foregroundStyle(.secondary)
                             }
@@ -263,7 +263,7 @@ struct PatchRuleEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             Form {
                 Section {
                     TextField("com.example.app", text: $bundleID)
@@ -316,7 +316,7 @@ struct PatchRuleEditorView: View {
                         }
                     }
                     if !replacementFilename.isEmpty {
-                        LabeledContent(
+                        CompatLabeledContent(
                             language.text("patch.file_size"),
                             value: ByteCountFormatter.string(
                                 fromByteCount: Int64(replacementData.count),

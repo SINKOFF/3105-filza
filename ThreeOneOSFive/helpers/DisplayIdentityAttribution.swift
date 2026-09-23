@@ -116,7 +116,7 @@ struct DisplayAttributionSheet: View {
     @Environment(\.appLanguage) private var language
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             Form {
                 Section {
                     HStack(spacing: 14) {
@@ -134,7 +134,7 @@ struct DisplayAttributionSheet: View {
 
                 if let url = DisplayIdentityAttributionURL() {
                     Section(language.text("attribution.link_section")) {
-                        LabeledContent(language.text("attribution.url")) {
+                        CompatLabeledContent(language.text("attribution.url")) {
                             Text(url.absoluteString)
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)
@@ -146,15 +146,15 @@ struct DisplayAttributionSheet: View {
                             Label(language.text("attribution.open"), systemImage: "arrow.up.right.square")
                         }
 
-                        ShareLink(item: url) {
+                        CompatShareLink(item: url) {
                             Label(language.text("attribution.share"), systemImage: "square.and.arrow.up")
                         }
                     }
                 }
             }
-            .formStyle(.grouped)
+            .compatFormStyleGrouped()
             .tint(AppTheme.accent)
-            .scrollContentBackground(.hidden)
+            .compatScrollContentBackgroundHidden()
             .background(AppTheme.pageBackground)
             .navigationTitle(language.text("attribution.title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -164,6 +164,6 @@ struct DisplayAttributionSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .compatPresentationDetents()
     }
 }

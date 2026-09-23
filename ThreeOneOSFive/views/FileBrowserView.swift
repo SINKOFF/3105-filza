@@ -93,7 +93,7 @@ struct FileBrowserView: View {
             }
             .listStyle(.insetGrouped)
             .environment(\.defaultMinListRowHeight, AppTheme.fileRowHeight)
-            .scrollDismissesKeyboard(.interactively)
+            .compatScrollDismissesKeyboard()
             .overlay {
                 Group {
                     switch overlayState {
@@ -114,7 +114,7 @@ struct FileBrowserView: View {
         }
         .navigationTitle(currentPath == containerPath ? title : (currentPath as NSString).lastPathComponent)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: FileBrowserDestination.self) { destination in
+        .compatNavigationDestination(for: FileBrowserDestination.self) { destination in
             FileBrowserView(
                 containerPath: destination.containerPath,
                 startPath: destination.startPath,
@@ -368,18 +368,33 @@ struct FileBrowserView: View {
             .buttonStyle(.plain)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
         } else if entry.isDirectory {
-            NavigationLink(
-                value: FileBrowserDestination(
-                    containerPath: containerPath,
-                    startPath: entry.path,
-                    title: entry.name,
-                    bundleID: bundleID
-                )
-            ) {
-                FileEntryRow(entry: entry, language: language, selectionState: nil)
+            let dest = FileBrowserDestination(
+                containerPath: containerPath,
+                startPath: entry.path,
+                title: entry.name,
+                bundleID: bundleID
+            )
+            if #available(iOS 16.0, *) {
+                NavigationLink(value: dest) {
+                    FileEntryRow(entry: entry, language: language, selectionState: nil)
+                }
+                .contextMenu { fileActions(for: entry) }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
+            } else {
+                NavigationLink(
+                    destination: FileBrowserView(
+                        containerPath: dest.containerPath,
+                        startPath: dest.startPath,
+                        title: dest.title,
+                        bundleID: dest.bundleID,
+                        filesTabSession: filesTabSession
+                    )
+                ) {
+                    FileEntryRow(entry: entry, language: language, selectionState: nil)
+                }
+                .contextMenu { fileActions(for: entry) }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
             }
-            .contextMenu { fileActions(for: entry) }
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
         } else {
             NavigationLink {
                 FileQuickLookView(file: entry)

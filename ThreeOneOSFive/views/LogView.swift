@@ -18,7 +18,7 @@ struct LogView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             Group {
                 if appLog.entries.isEmpty {
                     VStack(spacing: 14) {
@@ -91,14 +91,14 @@ struct LogView: View {
                     .disabled(appLog.entries.isEmpty)
                     .accessibilityLabel(language.text("logs.copy"))
 
-                    ShareLink(item: shareText) {
+                    CompatShareLink(item: shareText) {
                         Image(systemName: "square.and.arrow.up")
                     }
                     .disabled(appLog.entries.isEmpty)
                     .accessibilityLabel(language.text("logs.share"))
 
                     Button(language.text("common.done")) { dismiss() }
-                        .fontWeight(.semibold)
+                        .compatFontWeight(.semibold)
                 }
             }
         }

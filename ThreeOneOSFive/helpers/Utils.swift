@@ -188,3 +188,173 @@ enum AppUpdateChecker {
         return core.split(separator: ".").compactMap { Int($0.filter(\.isNumber)) }
     }
 }
+
+// MARK: - iOS 15 Compatibility Suite
+import SwiftUI
+
+struct CompatNavigationStack<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack {
+                content()
+            }
+        } else {
+            NavigationView {
+                content()
+            }
+            .navigationViewStyle(.stack)
+        }
+    }
+}
+
+struct CompatLabeledContent<LabelContent: View, Content: View>: View {
+    let label: LabelContent
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content, @ViewBuilder label: () -> LabelContent) {
+        self.label = label()
+        self.content = content()
+    }
+
+    init(_ titleKey: LocalizedStringKey, @ViewBuilder content: () -> Content) where LabelContent == Text {
+        self.label = Text(titleKey)
+        self.content = content()
+    }
+
+    init<S: StringProtocol>(_ title: S, @ViewBuilder content: () -> Content) where LabelContent == Text {
+        self.label = Text(title)
+        self.content = content()
+    }
+
+    init<S: StringProtocol>(_ title: S, value: S) where LabelContent == Text, Content == Text {
+        self.label = Text(title)
+        self.content = Text(value)
+    }
+
+    init(_ titleKey: LocalizedStringKey, value: LocalizedStringKey) where LabelContent == Text, Content == Text {
+        self.label = Text(titleKey)
+        self.content = Text(value)
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            LabeledContent {
+                content
+            } label: {
+                label
+            }
+        } else {
+            HStack {
+                label
+                Spacer()
+                content
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+struct CompatShareLink<LabelView: View>: View {
+    let item: Any
+    let label: LabelView
+
+    init(item: String, @ViewBuilder label: () -> LabelView) {
+        self.item = item
+        self.label = label()
+    }
+
+    init(item: URL, @ViewBuilder label: () -> LabelView) {
+        self.item = item
+        self.label = label()
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            if let url = item as? URL {
+                ShareLink(item: url) { label }
+            } else if let str = item as? String {
+                ShareLink(item: str) { label }
+            } else {
+                Button { share() } label: { label }
+            }
+        } else {
+            Button { share() } label: { label }
+        }
+    }
+
+    private func share() {
+        let av = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+            var topVC = rootVC
+            while let presented = topVC.presentedViewController {
+                topVC = presented
+            }
+            if let popover = av.popoverPresentationController {
+                popover.sourceView = topVC.view
+                popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            topVC.present(av, animated: true)
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func compatScrollContentBackgroundHidden() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollContentBackground(.hidden)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func compatPresentationDetents() -> some View {
+        if #available(iOS 16.0, *) {
+            self.presentationDetents([.medium])
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func compatFontWeight(_ weight: Font.Weight) -> some View {
+        if #available(iOS 16.0, *) {
+            self.fontWeight(weight)
+        } else {
+            self.font(.body.weight(weight))
+        }
+    }
+
+    @ViewBuilder
+    func compatFormStyleGrouped() -> some View {
+        if #available(iOS 16.0, *) {
+            self.formStyle(.grouped)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func compatScrollDismissesKeyboard() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollDismissesKeyboard(.interactively)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func compatNavigationDestination<D: Hashable, C: View>(for data: D.Type, @ViewBuilder destination: @escaping (D) -> C) -> some View {
+        if #available(iOS 16.0, *) {
+            self.navigationDestination(for: data, destination: destination)
+        } else {
+            self
+        }
+    }
+}
+

@@ -8,7 +8,7 @@ struct SettingsView: View {
     @State private var showDeleteKeyAlert: Bool = false
 
     var body: some View {
-        NavigationStack {
+        CompatNavigationStack {
             Form {
                 // ── App Branding ────────────────────────────────────────────
                 Section {
@@ -28,13 +28,13 @@ struct SettingsView: View {
 
                 // ── License Info ─────────────────────────────────────────────
                 Section("License") {
-                    LabeledContent("Status",
+                    CompatLabeledContent("Status",
                         value: LicenseService.shared.isActivated ? "Active ✅" : "Inactive ❌"
                     )
                     if !LicenseService.shared.activeKey.isEmpty {
-                        LabeledContent("Key", value: LicenseService.shared.activeKey)
+                        CompatLabeledContent("Key", value: LicenseService.shared.activeKey)
                         if !LicenseService.shared.expiryString.isEmpty {
-                            LabeledContent("Expires", value: LicenseService.shared.expiryString)
+                            CompatLabeledContent("Expires", value: LicenseService.shared.expiryString)
                         }
                         // ── Expiry countdown ────────────────────────────────
                         if let expDate = LicenseService.shared.expiryDate {
@@ -49,7 +49,7 @@ struct SettingsView: View {
                                 Image(systemName: "trash.fill")
                                     .foregroundColor(.red)
                                 Text("Delete Key")
-                                    .fontWeight(.semibold)
+                                    .compatFontWeight(.semibold)
                                     .foregroundColor(.red)
                                 Spacer()
                             }
@@ -59,8 +59,8 @@ struct SettingsView: View {
 
                 // ── Device ───────────────────────────────────────────────────
                 Section("Device") {
-                    LabeledContent("Model", value: AppInfo.displayMachineName)
-                    LabeledContent("iOS Version", value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
+                    CompatLabeledContent("Model", value: AppInfo.displayMachineName)
+                    CompatLabeledContent("iOS Version", value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
                 }
 
                 // ── Supported Versions ───────────────────────────────────────
@@ -71,9 +71,9 @@ struct SettingsView: View {
                         Text(appState.isSupported ? "Supported" : "Not Supported")
                             .foregroundStyle(appState.isSupported ? Color.green : Color.red)
                     }
-                    LabeledContent("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
-                    LabeledContent("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
-                    LabeledContent("iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range)
+                    CompatLabeledContent("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
+                    CompatLabeledContent("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
+                    CompatLabeledContent("iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("iOS 27.0")
                             .font(.body)
@@ -105,7 +105,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
+                        .compatFontWeight(.semibold)
                 }
             }
             .alert("Delete License Key", isPresented: $showDeleteKeyAlert) {
@@ -179,7 +179,7 @@ private struct ExpiryCountdownRow: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        LabeledContent("Time Left", value: countdown)
+        CompatLabeledContent("Time Left", value: countdown)
             .onReceive(timer) { _ in now = Date() }
     }
 

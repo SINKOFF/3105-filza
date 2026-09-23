@@ -39,8 +39,25 @@ struct AppDataBrowserView: View {
     }
 
     var body: some View {
-        NavigationStack(path: activeNavigationPath) {
-            appList
+        Group {
+            if #available(iOS 16.0, *) {
+                NavigationStack(path: activeNavigationPath) {
+                    browserRootContent
+                        .navigationDestination(for: FileBrowserDestination.self) { destination in
+                            destinationView(destination)
+                        }
+                }
+            } else {
+                NavigationView {
+                    browserRootContent
+                }
+                .navigationViewStyle(.stack)
+            }
+        }
+    }
+
+    private var browserRootContent: some View {
+        appList
             .navigationTitle(language.text("browser.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -69,24 +86,25 @@ struct AppDataBrowserView: View {
                     reload()
                 }
             }
-            .navigationDestination(for: FileBrowserDestination.self) { destination in
-                if destination.startPath == destination.containerPath {
-                    FileBrowserView(
-                        containerPath: destination.containerPath,
-                        title: destination.title,
-                        bundleID: destination.bundleID,
-                        filesTabSession: $tabSession
-                    )
-                } else {
-                    FileBrowserView(
-                        containerPath: destination.containerPath,
-                        startPath: destination.startPath,
-                        title: destination.title,
-                        bundleID: destination.bundleID,
-                        filesTabSession: $tabSession
-                    )
-                }
-            }
+    }
+
+    @ViewBuilder
+    private func destinationView(_ destination: FileBrowserDestination) -> some View {
+        if destination.startPath == destination.containerPath {
+            FileBrowserView(
+                containerPath: destination.containerPath,
+                title: destination.title,
+                bundleID: destination.bundleID,
+                filesTabSession: $tabSession
+            )
+        } else {
+            FileBrowserView(
+                containerPath: destination.containerPath,
+                startPath: destination.startPath,
+                title: destination.title,
+                bundleID: destination.bundleID,
+                filesTabSession: $tabSession
+            )
         }
     }
 
@@ -112,6 +130,20 @@ struct AppDataBrowserView: View {
         }
     }
 
+    private func workspaceRow(_ destination: FileBrowserDestination) -> some View {
+        HStack(spacing: 10) {
+            AppRowIcon(systemName: "folder.fill")
+            VStack(alignment: .leading, spacing: 2) {
+                Text("3105")
+                    .font(.subheadline.weight(.semibold))
+                Text(language.text("browser.workspace_subtitle"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
     private var appRows: some View {
         List {
             if let workspaceURL {
@@ -122,21 +154,20 @@ struct AppDataBrowserView: View {
                         title: "3105",
                         bundleID: nil
                     )
-                    NavigationLink(value: workspaceDestination) {
-                        HStack(spacing: 10) {
-                            AppRowIcon(systemName: "folder.fill")
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("3105")
-                                    .font(.subheadline.weight(.semibold))
-                                Text(language.text("browser.workspace_subtitle"))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                    if #available(iOS 16.0, *) {
+                        NavigationLink(value: workspaceDestination) {
+                            workspaceRow(workspaceDestination)
                         }
-                        .padding(.vertical, 2)
-                    }
-                    .contextMenu {
-                        openInNewTabButton(workspaceDestination)
+                        .contextMenu {
+                            openInNewTabButton(workspaceDestination)
+                        }
+                    } else {
+                        NavigationLink(destination: destinationView(workspaceDestination)) {
+                            workspaceRow(workspaceDestination)
+                        }
+                        .contextMenu {
+                            openInNewTabButton(workspaceDestination)
+                        }
                     }
                 }
             }
@@ -151,11 +182,20 @@ struct AppDataBrowserView: View {
                             title: app.displayName,
                             bundleID: app.bundleID
                         )
-                        NavigationLink(value: appDestination) {
-                            appRow(app)
-                        }
-                        .contextMenu {
-                            openInNewTabButton(appDestination)
+                        if #available(iOS 16.0, *) {
+                            NavigationLink(value: appDestination) {
+                                appRow(app)
+                            }
+                            .contextMenu {
+                                openInNewTabButton(appDestination)
+                            }
+                        } else {
+                            NavigationLink(destination: destinationView(appDestination)) {
+                                appRow(app)
+                            }
+                            .contextMenu {
+                                openInNewTabButton(appDestination)
+                            }
                         }
                     }
                 }
@@ -176,7 +216,7 @@ struct AppDataBrowserView: View {
         }
         .listStyle(.insetGrouped)
         .environment(\.defaultMinListRowHeight, 48)
-        .scrollDismissesKeyboard(.interactively)
+        .compatScrollDismissesKeyboard()
         .overlay {
             Group {
                 switch overlayState {
