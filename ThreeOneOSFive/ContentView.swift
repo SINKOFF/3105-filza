@@ -274,11 +274,11 @@ private struct DashboardView: View {
 
     private var deviceSection: some View {
         Section {
-            LabeledContent(language.text("dashboard.hardware_model")) {
+            CompatLabeledContent(language.text("dashboard.hardware_model")) {
                 Text(AppInfo.displayMachineName)
                     .font(.body.monospaced())
             }
-            LabeledContent(language.text("settings.ios_version")) {
+            CompatLabeledContent(language.text("settings.ios_version")) {
                 Text("\(AppInfo.osVersion) (\(AppInfo.osBuild))")
                     .font(.body.monospaced())
             }

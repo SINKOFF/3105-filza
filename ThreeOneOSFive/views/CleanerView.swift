@@ -203,16 +203,16 @@ struct CleanerView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if !records.isEmpty {
-            ToolbarItem(placement: .navigationBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
+            if !records.isEmpty {
                 selectionMenu
-            }
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                sortMenu
+            } else {
                 refreshButton
             }
-        } else {
-            ToolbarItem(placement: .navigationBarLeading) {
+        }
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            if !records.isEmpty {
+                sortMenu
                 refreshButton
             }
         }

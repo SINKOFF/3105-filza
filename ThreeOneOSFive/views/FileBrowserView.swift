@@ -124,8 +124,8 @@ struct FileBrowserView: View {
             )
         }
         .toolbar {
-            if let filesTabSession {
-                ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if let filesTabSession {
                     FilesTabToolbarButton(session: filesTabSession)
                 }
             }
