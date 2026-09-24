@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 enum CopyPastePatchService {
     private static var fileManager: FileManager { .default }
@@ -6,15 +7,57 @@ enum CopyPastePatchService {
     private static var backupBaseURL: URL {
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let url = appSupport.appendingPathComponent("CopyPasteBackups", isDirectory: true)
-        try? fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        ensureDirectory(at: url.path)
         return url
     }
 
     private static func projectBackupURL(bundleID: String, projectName: String) -> URL {
         let safeName = projectName.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectName
         let url = backupBaseURL.appendingPathComponent(bundleID, isDirectory: true).appendingPathComponent(safeName, isDirectory: true)
-        try? fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        ensureDirectory(at: url.path)
         return url
+    }
+
+    private static func ensureDirectory(at path: String) {
+        if !fileManager.fileExists(atPath: path) {
+            try? fileManager.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+        }
+        chmod(path, 0o777)
+    }
+
+    private static func writeDirectly(data: Data, to path: String) throws {
+        let parent = (path as NSString).deletingLastPathComponent
+        ensureDirectory(at: parent)
+
+        unlink(path)
+        let fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0o666)
+        if fd >= 0 {
+            data.withUnsafeBytes { ptr in
+                guard let base = ptr.baseAddress else { return }
+                var writtenTotal = 0
+                while writtenTotal < data.count {
+                    let w = write(fd, base.advanced(by: writtenTotal), data.count - writtenTotal)
+                    if w <= 0 { break }
+                    writtenTotal += w
+                }
+            }
+            close(fd)
+            chmod(path, 0o666)
+        } else {
+            // Non-atomic fallback
+            try data.write(to: URL(fileURLWithPath: path), options: [])
+        }
+    }
+
+    private static func copyDirectly(from src: String, to dst: String) {
+        let dstParent = (dst as NSString).deletingLastPathComponent
+        ensureDirectory(at: dstParent)
+        unlink(dst)
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: src)) {
+            try? writeDirectly(data: data, to: dst)
+        } else {
+            try? fileManager.copyItem(atPath: src, toPath: dst)
+        }
     }
 
     /// Applies a patch project using Filza-style direct copy/paste with a clean original backup.
@@ -31,27 +74,19 @@ enum CopyPastePatchService {
 
         for rule in project.rules {
             let targetURL = containerURL.appendingPathComponent(rule.relativePath)
-            let parentDir = targetURL.deletingLastPathComponent()
-
-            // 1. Ensure destination directory exists
-            if !fileManager.fileExists(atPath: parentDir.path) {
-                try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true)
-            }
-
-            // 2. Clean Backup of original file (only if original exists and hasn't been backed up yet)
+            let targetPath = targetURL.path
             let backupFile = backupDir.appendingPathComponent((rule.relativePath as NSString).lastPathComponent + ".clean")
-            if fileManager.fileExists(atPath: targetURL.path) {
+
+            // 1. Clean Backup of original file (only if original exists and hasn't been backed up yet)
+            if fileManager.fileExists(atPath: targetPath) {
                 if !fileManager.fileExists(atPath: backupFile.path) {
-                    try? fileManager.copyItem(at: targetURL, to: backupFile)
+                    copyDirectly(from: targetPath, to: backupFile.path)
                     log("copypaste: backed up original -> \(backupFile.lastPathComponent)")
                 }
             }
 
-            // 3. Paste & Replace modded data (Filza-style)
-            if fileManager.fileExists(atPath: targetURL.path) {
-                try? fileManager.removeItem(at: targetURL)
-            }
-            try rule.replacementData.write(to: targetURL, options: .atomic)
+            // 2. Paste & Replace modded data (Filza-style low-level write)
+            try writeDirectly(data: rule.replacementData, to: targetPath)
             log("copypaste: pasted & replaced -> \(rule.relativePath)")
         }
 
@@ -74,19 +109,17 @@ enum CopyPastePatchService {
 
         for rule in project.rules {
             let targetURL = containerURL.appendingPathComponent(rule.relativePath)
+            let targetPath = targetURL.path
             let backupFile = backupDir.appendingPathComponent((rule.relativePath as NSString).lastPathComponent + ".clean")
 
             if fileManager.fileExists(atPath: backupFile.path) {
                 // Restore original file
-                if fileManager.fileExists(atPath: targetURL.path) {
-                    try? fileManager.removeItem(at: targetURL)
-                }
-                try? fileManager.copyItem(at: backupFile, to: targetURL)
-                try? fileManager.removeItem(at: backupFile)
+                copyDirectly(from: backupFile.path, to: targetPath)
+                unlink(backupFile.path)
                 log("copypaste: restored clean original -> \(rule.relativePath)")
             } else {
                 // If there was no original file, delete the mod file
-                try? fileManager.removeItem(at: targetURL)
+                unlink(targetPath)
                 log("copypaste: removed modded file (no original) -> \(rule.relativePath)")
             }
         }
