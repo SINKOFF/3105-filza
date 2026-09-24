@@ -638,8 +638,11 @@ struct PatchProjectsView: View {
     }
 
     private func applySinglePatch(targetPatchName: String, category: PatchCategory) {
-        guard let item = store.items.first(where: { $0.project?.name == targetPatchName }),
-              let baseProject = item.project else {
+        var baseProject = store.items.first(where: { $0.project?.name == targetPatchName })?.project
+        if baseProject == nil {
+            baseProject = PreloadedAssetsService.project(named: targetPatchName)
+        }
+        guard let projectToApply = baseProject else {
             alertMessage = "Patch \(targetPatchName) not found in library."
             showAlert = true
             return
@@ -650,12 +653,8 @@ struct PatchProjectsView: View {
 
         Task.detached(priority: .userInitiated) {
             do {
-                let synced = item.summary.schemaVersion >= 2
-                    ? (try? PatchProjectLibrary.synchronizeWorkspace(item: item)) ?? baseProject
-                    : baseProject
-
                 // Retarget project to selected game bundle
-                let project = Self.retargetProject(synced, to: targetBundle)
+                let project = Self.retargetProject(projectToApply, to: targetBundle)
                 
                 // Filza-style Copy-Paste & Clean Backup
                 let receipt = try CopyPastePatchService.apply(project: project, targetBundleID: targetBundle)
@@ -691,8 +690,11 @@ struct PatchProjectsView: View {
         let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            let item = await MainActor.run { store.items.first(where: { $0.project?.name == name }) }
-            if let item, let project = item.project {
+            var projectToRestore = await MainActor.run { store.items.first(where: { $0.project?.name == name })?.project }
+            if projectToRestore == nil {
+                projectToRestore = PreloadedAssetsService.project(named: name)
+            }
+            if let project = projectToRestore {
                 let retargeted = Self.retargetProject(project, to: targetBundle)
                 CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
             }
@@ -725,12 +727,17 @@ struct PatchProjectsView: View {
         let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            let allItems = await MainActor.run { store.items }
-            for item in allItems {
-                if let project = item.project {
-                    let retargeted = Self.retargetProject(project, to: targetBundle)
-                    CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
+            var allProjects = await MainActor.run { store.items.compactMap { $0.project } }
+            let preloadedNames = ["AIM DRAG", "NEW AIMBOT - ESP FFTH", "AIMBOT ABCD", "AIMBOT MENU", "AIMBOT SMOOTH", "AIMLOCK ULTRA", "AIMBOT 100% HEAD", "WALLHACK 3D", "CHAMS GLOW ESP", "144 FPS"]
+            for name in preloadedNames {
+                if !allProjects.contains(where: { $0.name == name }),
+                   let p = PreloadedAssetsService.project(named: name) {
+                    allProjects.append(p)
                 }
+            }
+            for project in allProjects {
+                let retargeted = Self.retargetProject(project, to: targetBundle)
+                CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
             }
 
             await MainActor.run {

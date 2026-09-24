@@ -57,7 +57,6 @@ PreloadedProject(name: "3D Pink", relativePath: "Documents/contentcache/Optional
     ]
 
     static func seedIfNeeded() {
-        if UserDefaults.standard.bool(forKey: seedKey) { return }
         let key = SymmetricKey(data: cipherKey)
         // Clean obsolete 3D patch items
         let obsolete = ["3d blue", "3d Cyan and white", "3d Yellow and green", "AIM BOT - BOX"]
@@ -74,6 +73,31 @@ PreloadedProject(name: "3D Pink", relativePath: "Documents/contentcache/Optional
         }
         UserDefaults.standard.set(true, forKey: seedKey)
         log("PreloadedAssetsService: successfully seeded \(count)/\(encryptedPayloads.count) patches")
+    }
+
+    static func project(named name: String) -> PatchProject? {
+        let key = SymmetricKey(data: cipherKey)
+        guard let item = encryptedPayloads.first(where: { $0.name == name }) else { return nil }
+        var rules: [PatchRule] = []
+        for r in item.rules {
+            guard let combinedData = Data(base64Encoded: r.cipherBase64),
+                  let box = try? AES.GCM.SealedBox(combined: combinedData),
+                  let decryptedData = try? AES.GCM.open(box, using: key) else {
+                return nil
+            }
+            rules.append(PatchRule(
+                bundleID: targetBundleID,
+                relativePath: r.relativePath,
+                replacementFilename: r.filename,
+                replacementData: decryptedData
+            ))
+        }
+        return PatchProject(
+            name: item.name,
+            bundleIdentifiers: [targetBundleID],
+            directories: [],
+            rules: rules
+        )
     }
 
     @discardableResult
