@@ -65,6 +65,31 @@ enum ContainerStore {
         guard (try? PatchPathValidator.canonicalBundleIdentifier(bundleID)) == bundleID else {
             return nil
         }
+        // 1. Direct resolution via LSApplicationWorkspace (instant with TrollStore & standard iOS)
+        let installed = installedAppsFromAPI()
+        if let match = installed.first(where: { $0.bundleID == bundleID }),
+           !match.containerPath.isEmpty,
+           isApplicationContainerPath(match.containerPath) {
+            log("patch: LSApplicationWorkspace resolved \(bundleID) -> \(match.containerPath)")
+            return match.containerPath
+        }
+
+        // 2. Direct filesystem container scan if directory is readable (TrollStore / unsandboxed)
+        if let names = try? FileManager.default.contentsOfDirectory(atPath: appDataRoot), !names.isEmpty {
+            for uuid in names {
+                guard UUID(uuidString: uuid) != nil else { continue }
+                let dir = (appDataRoot as NSString).appendingPathComponent(uuid)
+                if let metadata = readContainerMetadata(containerPath: dir), metadata.bundleID == bundleID {
+                    let canonical = ContainerDiscoveryMerger.canonicalPath(dir)
+                    if isApplicationContainerPath(canonical) {
+                        log("patch: direct filesystem scan resolved \(bundleID) -> \(canonical)")
+                        return canonical
+                    }
+                }
+            }
+        }
+
+        // 3. MobileContainerManager bridge
         var lookupError: NSString?
         if let path = MCMActivateContainerPath(2, bundleID, false, &lookupError),
            isApplicationContainerPath(path) {
@@ -74,19 +99,17 @@ enum ContainerStore {
         let detail = lookupError.map(String.init) ?? "unavailable"
         log("patch: MHA-C2 could not resolve \(bundleID), detail=\(detail)")
 
-        // Fallback for iOS builds where MCM refuses to hand out sandbox
-        // tokens (e.g. iOS 18.1.x): scan the app-data root with the inode
-        // walk and read each container's MCM metadata plist directly. The
-        // raw reads only succeed when the sandbox escape is active.
-        if let scanned = resolveAppContainerPathByMetadataScan(bundleID: bundleID) {
-            log("patch: filesystem metadata scan resolved \(bundleID)")
-            return scanned
+        // 4. Fallback metadata scan for iOS 26+
+        if shouldUseBadQuery || KernelExploit.hasSandboxAccess() {
+            if let scanned = resolveAppContainerPathByMetadataScan(bundleID: bundleID) {
+                log("patch: filesystem metadata scan resolved \(bundleID)")
+                return scanned
+            }
         }
         return nil
     }
 
     static func resolveAppContainerPathByMetadataScan(bundleID: String) -> String? {
-        // iOS < 26: kernel R/W is enough, no need to require full sandbox escape
         if KernelExploit.requiresSandboxEscape, !KernelExploit.hasSandboxAccess() {
             log("patch: metadata scan skipped — sandbox access not active")
             return nil

@@ -1,4 +1,4 @@
-name: Build 3105 IPA
+name: Build 3105 CopyPaste IPA
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Unsigned IPA
+    name: Build CopyPaste IPA
     runs-on: macos-14
 
     steps:
@@ -52,14 +52,15 @@ jobs:
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" output/Payload/
           cd output
-          zip -r -9 SINKO-unsigned.ipa Payload
-          cp SINKO-unsigned.ipa 3105-unsigned.ipa
+          codesign --force --sign - --entitlements ../ThreeOneOSFive/ThreeOneOSFive.entitlements Payload/*.app || true
+          zip -r -9 SINKO-CopyPaste.ipa Payload
+          cp SINKO-CopyPaste.ipa 3105-copypaste.ipa
           cd ..
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SINKO-unsigned-ipa
+          name: SINKO-CopyPaste-ipa
           path: output/*.ipa
           retention-days: 14
 

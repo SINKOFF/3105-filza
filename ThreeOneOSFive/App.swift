@@ -147,7 +147,10 @@ class AppState: ObservableObject {
             patch: v.patch,
             build: AppInfo.osBuild
         )
-        guard applicable else { return }
+        guard applicable else {
+            exploitStatus = .success(method: "Direct File Access (TrollStore)")
+            return
+        }
 
         refreshKernelExploitStatus()
         maybeAutoRunKernelExploit()

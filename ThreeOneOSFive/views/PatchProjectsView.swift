@@ -651,12 +651,14 @@ struct PatchProjectsView: View {
         Task.detached(priority: .userInitiated) {
             do {
                 let synced = item.summary.schemaVersion >= 2
-                    ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
+                    ? (try? PatchProjectLibrary.synchronizeWorkspace(item: item)) ?? baseProject
                     : baseProject
 
                 // Retarget project to selected game bundle
                 let project = Self.retargetProject(synced, to: targetBundle)
-                let receipt = try DevicePatchService.apply(project: project)
+                
+                // Filza-style Copy-Paste & Clean Backup
+                let receipt = try CopyPastePatchService.apply(project: project, targetBundleID: targetBundle)
 
                 await MainActor.run {
                     self.applyingPatchName = nil
@@ -666,7 +668,7 @@ struct PatchProjectsView: View {
                     AudioServicesPlayAlertSound(1054)
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-                    self.showToastMessage("\(targetPatchName) Applied Successfully", isRestore: false)
+                    self.showToastMessage("\(targetPatchName) Activated (Copy-Paste)", isRestore: false)
                 }
             } catch {
                 await MainActor.run {
@@ -677,7 +679,7 @@ struct PatchProjectsView: View {
                     case .esp3d:  if self.active3DName == targetPatchName { self.active3DName = nil }
                     case .fps:    if targetPatchName == "144 FPS" { self.is144FPSActive = false }
                     }
-                    self.alertMessage = "Failed to apply patch: \(error.localizedDescription)"
+                    self.alertMessage = "Failed to activate patch: \(error.localizedDescription)"
                     self.showAlert = true
                 }
             }
@@ -686,22 +688,13 @@ struct PatchProjectsView: View {
 
     private func restoreSinglePatch(name: String, category: PatchCategory, autoDeactivateOnly: Bool = false) {
         applyingPatchName = name
+        let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            // Find active receipt or lookup latest receipt in library
             let item = await MainActor.run { store.items.first(where: { $0.project?.name == name }) }
-            var receiptToRestore = await MainActor.run { activeReceipts[name] }
-
-            if receiptToRestore == nil, let item, let project = item.project {
-                receiptToRestore = DevicePatchService.latestReceipt(projectID: project.id)
-            }
-
-            if let receipt = receiptToRestore {
-                do {
-                    try DevicePatchService.restore(receipt: receipt)
-                } catch {
-                    log("restore error for \(name): \(error)")
-                }
+            if let item, let project = item.project {
+                let retargeted = Self.retargetProject(project, to: targetBundle)
+                CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
             }
 
             await MainActor.run {
@@ -729,20 +722,14 @@ struct PatchProjectsView: View {
     private func restoreAllPatches() {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         isRestoringAll = true
+        let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            let receipts = await MainActor.run { Array(activeReceipts.values) }
-
-            // Restore all cached receipts
-            for receipt in receipts {
-                try? DevicePatchService.restore(receipt: receipt)
-            }
-
-            // Also check latest receipts for any store items that were active
             let allItems = await MainActor.run { store.items }
             for item in allItems {
-                if let project = item.project, let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
-                    try? DevicePatchService.restore(receipt: receipt)
+                if let project = item.project {
+                    let retargeted = Self.retargetProject(project, to: targetBundle)
+                    CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
                 }
             }
 
