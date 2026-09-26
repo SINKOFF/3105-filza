@@ -53,14 +53,16 @@ jobs:
           cp -R "$APP_PATH" output/Payload/
           cd output
           codesign --force --sign - --entitlements ../ThreeOneOSFive/ThreeOneOSFive.entitlements Payload/*.app || true
-          zip -r -9 SINKO-CopyPaste.ipa Payload
-          cp SINKO-CopyPaste.ipa 3105-copypaste.ipa
+          zip -r -9 SINKO-unsigned.ipa Payload
+          cp SINKO-unsigned.ipa 3105-unsigned.ipa
+          cp SINKO-unsigned.ipa SINKO-CopyPaste.ipa
+          cp SINKO-unsigned.ipa 3105-copypaste.ipa
           cd ..
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SINKO-CopyPaste-ipa
+          name: SINKO-unsigned-ipa
           path: output/*.ipa
           retention-days: 14
 
