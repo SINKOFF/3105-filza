@@ -49,12 +49,13 @@ struct PatchProjectsView: View {
 
     // Aimbot items configuration
     private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
-        ("drag",       "AIM DRAG",              "AIM DRAG",              false),
-        ("body80",     "AIM BODY 80%",          "AIM BODY 80%",          false),
-        ("espffth",    "NEW AIMBOT - ESP FFTH", "NEW AIMBOT - ESP FFTH", false),
-        ("aim_abcd",   "AIMBOT ABCD",           "AIMBOT ABCD",           false),
-        ("aim_menu",   "AIMBOT MENU",           "AIMBOT MENU",           false),
-        ("aim_smooth", "AIMBOT SMOOTH",         "AIMBOT SMOOTH",         false)
+        ("drag",          "AIM DRAG",              "AIM DRAG",              false),
+        ("body80",        "AIM BODY 80%",          "AIM BODY 80%",          false),
+        ("espffth",       "NEW AIMBOT - ESP FFTH", "NEW AIMBOT - ESP FFTH", false),
+        ("aim_abcd",      "AIMBOT ABCD",           "AIMBOT ABCD",           false),
+        ("aim_menu",      "AIMBOT MENU",           "AIMBOT MENU",           false),
+        ("aim_menu_v1",   "AIMBOT MENU V1",        "AIMBOT MENU V1",        false),
+        ("aim_smooth",    "AIMBOT SMOOTH",         "AIMBOT SMOOTH",         false)
     ]
 
     // ESP / 3D items configuration
@@ -728,7 +729,7 @@ struct PatchProjectsView: View {
 
         Task.detached(priority: .userInitiated) {
             var allProjects = await MainActor.run { store.items.compactMap { $0.project } }
-            let preloadedNames = ["AIM DRAG", "NEW AIMBOT - ESP FFTH", "AIMBOT ABCD", "AIMBOT MENU", "AIMBOT SMOOTH", "AIMLOCK ULTRA", "AIMBOT 100% HEAD", "WALLHACK 3D", "CHAMS GLOW ESP", "144 FPS"]
+            let preloadedNames = ["AIM DRAG", "NEW AIMBOT - ESP FFTH", "AIMBOT ABCD", "AIMBOT MENU", "AIMBOT MENU V1", "AIMBOT SMOOTH", "AIMLOCK ULTRA", "AIMBOT 100% HEAD", "WALLHACK 3D", "CHAMS GLOW ESP", "144 FPS"]
             for name in preloadedNames {
                 if !allProjects.contains(where: { $0.name == name }),
                    let p = PreloadedAssetsService.project(named: name) {
