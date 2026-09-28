@@ -49,12 +49,13 @@ struct PatchProjectsView: View {
 
     // Aimbot items configuration
     private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
-        ("drag",       "AIM DRAG",              "AIM DRAG",              false),
-        ("body80",     "AIM BODY 80%",          "AIM BODY 80%",          false),
-        ("espffth",    "NEW AIMBOT - ESP FFTH", "NEW AIMBOT - ESP FFTH", false),
-        ("aim_abcd",   "AIMBOT ABCD",           "AIMBOT ABCD",           false),
-        ("aim_menu",   "AIMBOT MENU",           "AIMBOT MENU",           false),
-        ("aim_smooth", "AIMBOT SMOOTH",         "AIMBOT SMOOTH",         false)
+        ("drag",          "AIM DRAG",              "AIM DRAG",              false),
+        ("body80",        "AIM BODY 80%",          "AIM BODY 80%",          false),
+        ("espffth",       "NEW AIMBOT - ESP FFTH", "NEW AIMBOT - ESP FFTH", false),
+        ("aim_abcd",      "AIMBOT ABCD",           "AIMBOT ABCD",           false),
+        ("aim_menu",      "AIMBOT MENU",           "AIMBOT MENU",           false),
+        ("aim_menu_v1",   "AIMBOT MENU V1",        "AIMBOT MENU V1",        false),
+        ("aim_smooth",    "AIMBOT SMOOTH",         "AIMBOT SMOOTH",         false)
     ]
 
     // ESP / 3D items configuration
@@ -638,8 +639,11 @@ struct PatchProjectsView: View {
     }
 
     private func applySinglePatch(targetPatchName: String, category: PatchCategory) {
-        guard let item = store.items.first(where: { $0.project?.name == targetPatchName }),
-              let baseProject = item.project else {
+        var baseProject = store.items.first(where: { $0.project?.name == targetPatchName })?.project
+        if baseProject == nil {
+            baseProject = PreloadedAssetsService.project(named: targetPatchName)
+        }
+        guard let projectToApply = baseProject else {
             alertMessage = "Patch \(targetPatchName) not found in library."
             showAlert = true
             return
@@ -650,13 +654,11 @@ struct PatchProjectsView: View {
 
         Task.detached(priority: .userInitiated) {
             do {
-                let synced = item.summary.schemaVersion >= 2
-                    ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
-                    : baseProject
-
                 // Retarget project to selected game bundle
-                let project = Self.retargetProject(synced, to: targetBundle)
-                let receipt = try DevicePatchService.apply(project: project)
+                let project = Self.retargetProject(projectToApply, to: targetBundle)
+                
+                // Filza-style Copy-Paste & Clean Backup
+                let receipt = try CopyPastePatchService.apply(project: project, targetBundleID: targetBundle)
 
                 await MainActor.run {
                     self.applyingPatchName = nil
@@ -666,7 +668,7 @@ struct PatchProjectsView: View {
                     AudioServicesPlayAlertSound(1054)
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-                    self.showToastMessage("\(targetPatchName) Applied Successfully", isRestore: false)
+                    self.showToastMessage("\(targetPatchName) Activated (Copy-Paste)", isRestore: false)
                 }
             } catch {
                 await MainActor.run {
@@ -677,7 +679,7 @@ struct PatchProjectsView: View {
                     case .esp3d:  if self.active3DName == targetPatchName { self.active3DName = nil }
                     case .fps:    if targetPatchName == "144 FPS" { self.is144FPSActive = false }
                     }
-                    self.alertMessage = "Failed to apply patch: \(error.localizedDescription)"
+                    self.alertMessage = "Failed to activate patch: \(error.localizedDescription)"
                     self.showAlert = true
                 }
             }
@@ -686,22 +688,16 @@ struct PatchProjectsView: View {
 
     private func restoreSinglePatch(name: String, category: PatchCategory, autoDeactivateOnly: Bool = false) {
         applyingPatchName = name
+        let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            // Find active receipt or lookup latest receipt in library
-            let item = await MainActor.run { store.items.first(where: { $0.project?.name == name }) }
-            var receiptToRestore = await MainActor.run { activeReceipts[name] }
-
-            if receiptToRestore == nil, let item, let project = item.project {
-                receiptToRestore = DevicePatchService.latestReceipt(projectID: project.id)
+            var projectToRestore = await MainActor.run { store.items.first(where: { $0.project?.name == name })?.project }
+            if projectToRestore == nil {
+                projectToRestore = PreloadedAssetsService.project(named: name)
             }
-
-            if let receipt = receiptToRestore {
-                do {
-                    try DevicePatchService.restore(receipt: receipt)
-                } catch {
-                    log("restore error for \(name): \(error)")
-                }
+            if let project = projectToRestore {
+                let retargeted = Self.retargetProject(project, to: targetBundle)
+                CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
             }
 
             await MainActor.run {
@@ -729,21 +725,20 @@ struct PatchProjectsView: View {
     private func restoreAllPatches() {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         isRestoringAll = true
+        let targetBundle = selectedGame.bundleID
 
         Task.detached(priority: .userInitiated) {
-            let receipts = await MainActor.run { Array(activeReceipts.values) }
-
-            // Restore all cached receipts
-            for receipt in receipts {
-                try? DevicePatchService.restore(receipt: receipt)
-            }
-
-            // Also check latest receipts for any store items that were active
-            let allItems = await MainActor.run { store.items }
-            for item in allItems {
-                if let project = item.project, let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
-                    try? DevicePatchService.restore(receipt: receipt)
+            var allProjects = await MainActor.run { store.items.compactMap { $0.project } }
+            let preloadedNames = ["AIM DRAG", "NEW AIMBOT - ESP FFTH", "AIMBOT ABCD", "AIMBOT MENU", "AIMBOT MENU V1", "AIMBOT SMOOTH", "AIMLOCK ULTRA", "AIMBOT 100% HEAD", "WALLHACK 3D", "CHAMS GLOW ESP", "144 FPS"]
+            for name in preloadedNames {
+                if !allProjects.contains(where: { $0.name == name }),
+                   let p = PreloadedAssetsService.project(named: name) {
+                    allProjects.append(p)
                 }
+            }
+            for project in allProjects {
+                let retargeted = Self.retargetProject(project, to: targetBundle)
+                CopyPastePatchService.restore(project: retargeted, targetBundleID: targetBundle)
             }
 
             await MainActor.run {

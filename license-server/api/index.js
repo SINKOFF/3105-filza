@@ -177,7 +177,7 @@ app.post('/api/verify', async (req, res) => {
 // ==========================================
 function authAdmin(req, res, next) {
     const authHeader = req.headers['authorization'];
-    if (authHeader === `Bearer ${ADMIN_PASSWORD}` || req.headers['x-admin-password'] === ADMIN_PASSWORD || authHeader === `Bearer admin123456`) {
+    if (authHeader === `Bearer ${ADMIN_PASSWORD}` || req.headers['x-admin-password'] === ADMIN_PASSWORD) {
         return next();
     }
     return res.status(401).json({ error: "Unauthorized" });

@@ -131,9 +131,7 @@ struct ContentView: View {
                 wallpapersSupported: wallpapersSupported
             )
         case .files:
-            AppDataBrowserView(
-                tabSession: filesTabSession
-            )
+            PatchProjectsView()
         case .patches:
             PatchProjectsView()
         case .cleaner:
@@ -172,7 +170,7 @@ struct ContentView: View {
     private var selectedVisibleSection: AppSection {
         guard let section = AppSection(rawValue: tabNavigation.selectedTab),
               featureVisibility.isVisible(section) else {
-            return .home
+            return .patches
         }
         return section
     }
