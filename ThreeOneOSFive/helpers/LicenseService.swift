@@ -18,39 +18,52 @@ final class LicenseService: ObservableObject {
     @Published var errorMessage: String?
 
     private var sessionID: String?
-    // Key and Expiry stored in Keychain so they survive reinstalls and backgrounding
-    private let keychainKeyTag = "com.threeoneosfive.saved.licensekey"
-    private let keychainExpiryTag = "com.threeoneosfive.saved.licenseexpiry"
+    // Isolated Keychain tags for CopyPass variant to prevent cross-app / overwrite glitches
+    private let keychainKeyTag = "com.threeoneosfive.sinko.copypass.v2.key"
+    private let keychainExpiryTag = "com.threeoneosfive.sinko.copypass.v2.expiry"
 
     init() {
-        // Fast start: if valid saved key and non-expired token exist, start activated immediately
+        // Purge legacy leaked/shared Keychain tags left by older builds or unauthorized API overwrites
+        purgeLegacyLeakedKeys()
+
+        // Fast start: only activate if valid saved key and non-expired token exist
         let savedKey = loadKeychain(key: keychainKeyTag) ?? ""
         let savedExpiry = loadKeychain(key: keychainExpiryTag)
         
         var isLocallyValid = false
         if !savedKey.isEmpty {
             self.activeKey = savedKey
-            if let expStr = savedExpiry, let expTs = Double(expStr) {
-                if expTs > Date().timeIntervalSince1970 {
+            if let expStr = savedExpiry {
+                if expStr == "LIFETIME" {
+                    isLocallyValid = true
+                    self.expiryString = "مدى الحياة (Lifetime)"
+                } else if let expTs = Double(expStr), expTs > Date().timeIntervalSince1970 {
                     isLocallyValid = true
                     let expDate = Date(timeIntervalSince1970: expTs)
                     self.expiryDate = expDate
                     self.expiryString = formatExpiryDate(expDate)
                 }
-            } else if savedExpiry == nil {
-                // Lifetime key
-                isLocallyValid = true
-                self.expiryString = "مدى الحياة (Lifetime)"
             }
         }
 
         self.isActivated = isLocallyValid
         
-        // Background live verification (silent, without locking UI)
+        // Background live verification
         if !savedKey.isEmpty {
             Task {
                 _ = await verify(key: savedKey, silent: true)
             }
+        }
+    }
+
+    private func purgeLegacyLeakedKeys() {
+        let legacyTags = [
+            "com.threeoneosfive.saved.licensekey",
+            "com.threeoneosfive.saved.licenseexpiry",
+            "com.threeoneosfive.keyauth.hwid"
+        ]
+        for tag in legacyTags {
+            deleteKeychain(key: tag)
         }
     }
 
