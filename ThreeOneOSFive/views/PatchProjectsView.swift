@@ -51,13 +51,8 @@ struct PatchProjectsView: View {
     private let aimbotList: [(id: String, title: String, patchProjectName: String, isRisk: Bool)] = [
         ("drag",          "AIM DRAG",              "AIM DRAG",              false),
         ("body80",        "AIM BODY 80%",          "AIM BODY 80%",          false),
-        ("espffth",       "NEW AIMBOT - ESP FFTH", "NEW AIMBOT - ESP FFTH", false),
-        ("aim_abcd",      "AIMBOT ABCD",           "AIMBOT ABCD",           false),
-        ("aim_menu",      "AIMBOT MENU",           "AIMBOT MENU",           false),
-        ("aim_menu_v1",   "AIMBOT MENU V1",        "AIMBOT MENU V1",        false),
-        ("aim_smooth",    "AIMBOT SMOOTH",         "AIMBOT SMOOTH",         false)
+        ("aim_menu_v3",   "AIMBOT MENU V3",        "AIMBOT MENU V3",        false)
     ]
-
     // ESP / 3D items configuration
     private let esp3DList: [(id: String, title: String, patchProjectName: String, color: Color)] = [
         ("pink",          "3D Pink",                 "3D Pink",                 Color(red: 1.00, green: 0.35, blue: 0.70)),
