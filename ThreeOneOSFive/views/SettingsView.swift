@@ -94,8 +94,8 @@ struct SettingsView: View {
                 Section("Contact") {
                     creditsRow(
                         name: "Telegram",
-                        role: "@Sinko_z1",
-                        url: "https://t.me/Sinko_z1"
+                        role: "@Sinko_z11",
+                        url: "https://t.me/Sinko_z11"
                     )
                 }
             }
