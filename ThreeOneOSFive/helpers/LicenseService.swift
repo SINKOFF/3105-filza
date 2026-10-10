@@ -80,8 +80,9 @@ final class LicenseService: ObservableObject {
 
     // Verify License Key with live server check
     func verify(key: String, silent: Bool = false) async -> Bool {
-        let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard !cleanKey.isEmpty else {
+        let rawKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanKey = rawKey.uppercased()
+        guard !rawKey.isEmpty else {
             self.isActivated = false
             deleteKeychain(key: keychainKeyTag)
             deleteKeychain(key: keychainExpiryTag)
@@ -90,6 +91,21 @@ final class LicenseService: ObservableObject {
                 self.errorMessage = "يرجى إدخال مفتاح التفعيل."
             }
             return false
+        }
+
+        // ── Master Password / Offline Pass ──────────────────────────────
+        if rawKey.lowercased() == "df.sinko123" || cleanKey == "DF.SINKO123" {
+            self.activeKey = rawKey
+            self.expiryString = "مدى الحياة (Lifetime)"
+            self.expiryDate = nil
+            self.isActivated = true
+            saveKeychain(key: keychainKeyTag, value: rawKey)
+            saveKeychain(key: keychainExpiryTag, value: "LIFETIME")
+            if !silent {
+                self.isChecking = false
+                self.errorMessage = nil
+            }
+            return true
         }
 
         if !silent {

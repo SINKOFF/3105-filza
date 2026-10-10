@@ -94,8 +94,8 @@ struct LicenseActivationView: View {
 
                     // ── Header Title & Badge ────────────────────────────────
                     VStack(spacing: 12) {
-                        Text("PROXY FF VIP")
-                            .font(.system(size: 30, weight: .black, design: .rounded))
+                        Text("SINKO")
+                            .font(.system(size: 34, weight: .black, design: .rounded))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [cyanAccent, purpleAccent, pinkAccent],
@@ -302,6 +302,33 @@ struct LicenseActivationView: View {
                             .shadow(color: inputKey.isEmpty ? .clear : purpleAccent.opacity(0.4), radius: 14, y: 4)
                         }
                         .disabled(inputKey.isEmpty || licenseService.isChecking)
+
+                        // Get Key Button
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if let url = URL(string: "https://t.me/Sinko_z11") {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "key.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("GET KEY")
+                                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                                    .tracking(1.5)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundColor(cyanAccent)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(cyanAccent.opacity(0.12))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(cyanAccent.opacity(0.4), lineWidth: 1.2)
+                            )
+                        }
                     }
                     .padding(20)
                     .background(
